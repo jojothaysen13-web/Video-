@@ -1,0 +1,5 @@
+{
+  "name": "lernpaket",
+  "private": true,
+  "dependencies": { "geist": "^1.9.2", "gsap": "^3.15.1", "lucide-static": "^1.73.0" }
+}

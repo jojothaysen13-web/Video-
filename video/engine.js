@@ -260,13 +260,14 @@
   };
 
   builders.matrix = (sc, root) => {
-    const names = [['Polypol', 'Angebots&shy;oligopol', 'Angebots&shy;monopol'], ['Nachfrage&shy;oligopol', 'zweiseitiges Oligopol', 'beschränktes Angebots&shy;monopol'], ['Nachfrage&shy;monopol', 'beschränktes Nachfrage&shy;monopol', 'zweiseitiges Monopol']];
-    const lab = ['viele', 'wenige', 'einer'];
-    const head = el('div', 'mtitle', `<div class="kicker">Marktformen-Schema</div><h2>9 Marktformen</h2>`);
+    const names = sc.cells, colL = sc.colLabels, rowL = sc.rowLabels;
+    const head = el('div', 'mtitle', `<div class="kicker">${sc.kicker || ''}</div><h2>${sc.title || ''}</h2>`);
     root.appendChild(head);
     const mx = el('div', 'mx');
-    let h = `<div class="h" style="flex-direction:column;align-items:flex-start;font-size:19px;color:#fff;gap:4px"><span>Anbieter →</span><span>Nachfrager ↓</span></div>` + lab.map(l => `<div class="h">${l}</div>`).join('');
-    names.forEach((row, r) => { h += `<div class="h">${lab[r]}</div>` + row.map((n, c) => `<div class="cell" data-rc="${r}${c}"><div class="glow"></div>${n}</div>`).join(''); });
+    mx.style.gridTemplateColumns = `210px repeat(${colL.length}, ${Math.floor(1320 / colL.length)}px)`;
+    mx.style.gridTemplateRows = `70px repeat(${rowL.length}, ${Math.min(138, Math.floor(430 / rowL.length))}px)`;
+    let h = `<div class="h" style="flex-direction:column;align-items:flex-start;font-size:19px;color:#fff;gap:4px">${(sc.corner || []).map(c => `<span>${c}</span>`).join('')}</div>` + colL.map(l => `<div class="h">${l}</div>`).join('');
+    names.forEach((row, r) => { h += `<div class="h">${rowL[r]}</div>` + row.map((n, c) => `<div class="cell" data-rc="${r}${c}"><div class="glow"></div>${n}</div>`).join(''); });
     mx.innerHTML = h; root.appendChild(mx);
     inFx([head, ...mx.querySelectorAll('.h')], sc.start, { stagger: .04, y: 20 });
     const cells = [...mx.querySelectorAll('.cell')];
@@ -365,6 +366,7 @@
   for (let c = 1; c < chapters.length; c++) { const s = el('div', 'seg', '<i></i>'); prog.appendChild(s); segs.push([c, s.firstChild]); }
   const b1 = $('.b1'), b2 = $('.b2'), stage = $('#stage');
   const hnum = $('#hnum'), hchap = $('#hchap');
+  $('#htitle').textContent = (window.META && window.META.title) || '';
   const accentAt = (t) => {
     let cur = TL.scenes[0], prev = TL.scenes[0];
     for (const sc of TL.scenes) { if (sc.start - .3 <= t) { prev = cur; cur = sc; } }

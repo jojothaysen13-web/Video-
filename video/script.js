@@ -210,7 +210,9 @@ const scenes = [
     ],
   },
   {
-    id: 'matrix', chapter: 5, type: 'matrix', accent: C.formen,
+    id: 'matrix', chapter: 5, type: 'matrix', accent: C.formen, kicker: 'Marktformen-Schema', title: '9 Marktformen',
+    corner: ['Anbieter →', 'Nachfrager ↓'], colLabels: ['viele', 'wenige', 'einer'], rowLabels: ['viele', 'wenige', 'einer'],
+    cells: [['Polypol', 'Angebots&shy;oligopol', 'Angebots&shy;monopol'], ['Nachfrage&shy;oligopol', 'zweiseitiges Oligopol', 'beschränktes Angebots&shy;monopol'], ['Nachfrage&shy;monopol', 'beschränktes Nachfrage&shy;monopol', 'zweiseitiges Monopol']],
     lines: [
       { say: 'Kombinierst du beide Seiten, bekommst du neun Marktformen.', v: { fill: true } },
       { say: 'Der Trick: Der Name richtet sich nach der Seite mit weniger Teilnehmern.', v: { sticker: 'Trick: kleinere Seite zählt' } },
@@ -327,7 +329,8 @@ const scenes = [
   },
 ];
 
+const META = { title: 'Markt & Preisbildung' };
 const CHAPTERS = ['Intro', 'Markt', 'Nachfrage', 'Angebot', 'Gleichgewicht', 'Marktformen', 'Staat', 'Funktionen', 'Quiz'];
 
-if (typeof module !== 'undefined') module.exports = { scenes, CHAPTERS, C };
-if (typeof window !== 'undefined') Object.assign(window, { SCENES: scenes, CHAPTERS, COLORS: C });
+if (typeof module !== 'undefined') module.exports = { scenes, CHAPTERS, C, META };
+if (typeof window !== 'undefined') Object.assign(window, { SCENES: scenes, CHAPTERS, COLORS: C, META });
