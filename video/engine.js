@@ -163,7 +163,7 @@
           tl.fromTo([ln, lb], { opacity: 0 }, { opacity: 1, duration: .35, immediateRender: false }, t);
         } else {
           ln.setAttribute('stroke-dasharray', `${len} ${len}`);
-          tl.fromTo(ln, { opacity: 1, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.1, ease: 'power3.inOut', immediateRender: false }, t);
+          tl.fromTo(ln, { opacity: 1, strokeDashoffset: len }, { opacity: 1, strokeDashoffset: 0, duration: 1.1, ease: 'power3.inOut', immediateRender: false }, t);
           tl.fromTo(lb, { opacity: 0, scale: .3 }, { opacity: 1, scale: 1, duration: .45, ease: 'back.out(2)', immediateRender: false }, t + .9);
         }
         add(o.id, ln, lb);
@@ -190,21 +190,21 @@
         const c2 = svgEl('circle', { cx: x2, cy: y, r: 9, fill: '#fff', opacity: 0 });
         const lb = label(o.label, (x1 + x2) / 2, y - 46, o.color);
         lb.style.color = o.color;
-        tl.fromTo(bar, { opacity: .55, attr: { x2: x1 } }, { attr: { x2 }, duration: .8, ease: 'power3.out', immediateRender: false }, t + .2);
+        tl.fromTo(bar, { opacity: .55, attr: { x2: x1 } }, { opacity: .55, attr: { x2 }, duration: .8, ease: 'power3.out', immediateRender: false }, t + .2);
         tl.fromTo([c1, c2], { opacity: 0 }, { opacity: 1, duration: .3, stagger: .5, immediateRender: false }, t + .2);
         tl.fromTo(lb, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .4, ease: E_IN, immediateRender: false }, t + .8);
         add(o.id, bar, c1, c2, lb);
       } else if (o.op === 'arrow') {
         const x = X(o.q) + 0, y1 = Y(o.p1), y2 = Y(o.p2);
         const ar = svgEl('line', { x1: x + 60, y1, x2: x + 60, y2: y1, stroke: o.color, 'stroke-width': 6, 'stroke-linecap': 'round', 'marker-end': `url(#ah_${sc.id})`, opacity: 0 });
-        tl.fromTo(ar, { opacity: 1, attr: { y2: y1 } }, { attr: { y2 }, duration: .7, ease: 'power3.inOut', immediateRender: false }, t);
+        tl.fromTo(ar, { opacity: 1, attr: { y2: y1 } }, { opacity: 1, attr: { y2 }, duration: .7, ease: 'power3.inOut', immediateRender: false }, t);
         add(o.id, ar);
       } else if (o.op === 'hline') {
         const y = Y(o.p);
         const hl = svgEl('line', { x1: L, y1: y, x2: R, y2: y, stroke: o.color, 'stroke-width': 4, 'stroke-dasharray': '14 10', opacity: 0 });
         const lb = label(o.label, R - 90, y + 36, o.color);
         lb.style.background = o.color; lb.style.color = '#050507';
-        tl.fromTo(hl, { opacity: 1, attr: { x2: L } }, { attr: { x2: R }, duration: .8, ease: 'power3.inOut', immediateRender: false }, t);
+        tl.fromTo(hl, { opacity: 1, attr: { x2: L } }, { opacity: 1, attr: { x2: R }, duration: .8, ease: 'power3.inOut', immediateRender: false }, t);
         tl.fromTo(lb, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: .4, ease: E_IN, immediateRender: false }, t + .6);
         add(o.id, hl, lb);
       } else if (o.op === 'shift') {
@@ -222,7 +222,7 @@
         const my = Y((c.p1 + c.p2) / 2), mx = X((c.q1 + c.q2) / 2);
         const dx = X((q1 + q2) / 2) - mx;
         const ar = svgEl('line', { x1: mx, y1: my + 0, x2: mx, y2: my, stroke: '#fff', 'stroke-width': 4, 'marker-end': `url(#ah_${sc.id})`, opacity: 0 });
-        tl.fromTo(ar, { opacity: 1, attr: { x2: mx } }, { attr: { x2: mx + dx * .9 }, duration: 1, ease: 'power3.out', immediateRender: false }, t + .5);
+        tl.fromTo(ar, { opacity: 1, attr: { x2: mx } }, { opacity: 1, attr: { x2: mx + dx * .9 }, duration: 1, ease: 'power3.out', immediateRender: false }, t + .5);
         add(o.id + '_g', ghost, gl, ar);
       } else if (o.op === 'hide') {
         o.ids.forEach(id => (objs[id] || []).length && tl.to(objs[id], { opacity: 0, duration: .3 }, t));
