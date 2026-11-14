@@ -1,0 +1,25 @@
+{
+  "name": "video-",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jojothaysen13-web/Video-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jojothaysen13-web/Video-/issues"
+  },
+  "homepage": "https://github.com/jojothaysen13-web/Video-#readme",
+  "dependencies": {
+    "geist": "^1.9.2",
+    "gsap": "^3.15.1",
+    "lucide-static": "^1.73.0"
+  }
+}
