@@ -31,7 +31,8 @@ async function stills(list) {
   await browser.close();
 }
 
-async function renderChunk(browser, f0, f1, out) {
+async function renderChunk(_b, f0, f1, out) {
+  const browser = await chromium.launch();
   const page = await openPage(browser);
   const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(FPS), out], { stdio: ['pipe', 'inherit', 'inherit'] });
@@ -40,11 +41,11 @@ async function renderChunk(browser, f0, f1, out) {
     await page.evaluate(t => window.seek(t), f / FPS);
     const buf = await page.screenshot({ type: 'jpeg', quality: 92 });
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
-    if ((f - f0) % 300 === 0) console.log(`[${path.basename(out)}] ${f - f0}/${f1 - f0} frames, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+    if ((f - f0) % 150 === 0) console.log(`[${path.basename(out)}] ${f - f0}/${f1 - f0} frames, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
   ff.stdin.end();
   await new Promise(r => ff.on('close', r));
-  await page.close();
+  await browser.close();
 }
 
 async function full() {

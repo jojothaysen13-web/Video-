@@ -91,6 +91,11 @@ def build_timeline(scenes):
 
 
 # ───────────────────────────── Musik & SFX (prozedural, lizenzfrei)
+def movavg(x, k):
+    c = np.cumsum(np.concatenate([np.zeros(k // 2 + 1), x, np.zeros(k)]))
+    return ((c[k:k + len(x)] - c[:len(x)]) / k).astype(np.float32)
+
+
 def note_freq(n):
     return 440.0 * 2 ** ((n - 69) / 12)
 
@@ -146,8 +151,7 @@ def make_music(total):
             if hs + hat_len < n:
                 out[hs:hs + hat_len] += hat * (1 if off else 0.6)
     # leichter Tiefpass (gleitender Mittelwert) für Lo-Fi-Gefühl
-    k = 5
-    out = np.convolve(out, np.ones(k) / k, mode='same').astype(np.float32)
+    out = movavg(out, 5)
     # Fade in/out
     fi = int(2 * SR)
     out[:fi] *= np.linspace(0, 1, fi)
@@ -171,7 +175,7 @@ def whoosh(d=0.45, strength=1.0):
         a = 0.02 + 0.5 * tt[i]
         acc += a * (x[i] - acc)
         y[i] = acc
-    y = y - np.convolve(y, np.ones(30) / 30, mode='same')
+    y = y - movavg(y, 30)
     return (y * env / (np.abs(y).max() + 1e-9) * 0.16 * strength).astype(np.float32)
 
 
@@ -230,7 +234,7 @@ def mix(tl, total, voice_clips):
     # Ducking: Musik leiser, wenn gesprochen wird
     env = np.abs(voice)
     win = int(0.25 * SR)
-    env = np.convolve(env, np.ones(win) / win, mode='same')
+    env = movavg(env, win)
     duck = 1 - 0.55 * np.clip(env / 0.05, 0, 1)
     music = music * duck
     out = voice + music * 0.9 + sfx
