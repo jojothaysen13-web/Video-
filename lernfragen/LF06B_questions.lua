@@ -1,6 +1,6 @@
 -- Fach: LF06 B (steht in jeder Frage im Feld fach)
 -- Thema: Markt und Preisbildung (Markt, Nachfrage, Angebot, Gleichgewichtspreis, Marktformen, Staatseingriffe, Funktionen des Marktpreises)
-local Questions = {
+local AllQuestions = {
     {
         fach = "LF06 B",
         question = "Was versteht man unter einem Markt?",
