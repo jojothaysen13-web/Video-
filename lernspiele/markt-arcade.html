@@ -1,0 +1,690 @@
+<title>Markt-Arcade</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500&display=swap">
+<style>
+/* Layout: Arcade-Startseite mit vier Spielkacheln; jedes Spiel = Canvas-Bühne mit Fragen-Banner oben, HUD und Touch-Steuerung darunter.
+   Bewusst nur dunkel – passend zum Erklärvideo und zur Markt-Arena. */
+:root {
+  color-scheme: dark;
+  --bg: #050507; --surface: #111117; --surface-2: #17171f; --line: rgba(255,255,255,.09); --line-2: rgba(255,255,255,.16);
+  --fg: #F5F5F7; --mut: rgba(245,245,247,.62); --dim: rgba(245,245,247,.38);
+  --markt: #8B6CFF; --n: #3D8BFF; --a: #FF8A3D; --gg: #2EE6A6; --formen: #FF4D8D; --staat: #FFD23D; --funk: #4DE1FF; --quiz: #C6FF3D;
+  --ok: #2EE6A6; --bad: #FF5C6C;
+  --font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.glow i { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; filter: blur(90px); opacity: .2; background: var(--acc, var(--quiz)); top: -38vmax; right: -25vmax; transition: background .6s; }
+.glow i + i { background: var(--markt); opacity: .12; top: auto; right: auto; bottom: -42vmax; left: -30vmax; }
+.wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding-block: 0 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--quiz); outline-offset: 3px; }
+a { color: inherit; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; background: linear-gradient(var(--bg) 70%, transparent); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; background: none; border: 0; padding: 0; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--quiz); box-shadow: 0 0 14px var(--quiz); }
+.xp { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(255,255,255,.04); }
+.xp b { color: var(--quiz); font-weight: 500; }
+.hero { padding: 26px 0 18px; display: grid; gap: 14px; }
+.kicker { display: inline-flex; justify-self: start; align-self: start; align-items: center; gap: 9px; padding: 6px 13px 6px 11px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(255,255,255,.04); font-size: 12px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.8); }
+.kicker::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--acc, var(--quiz)); box-shadow: 0 0 10px var(--acc, var(--quiz)); }
+h1 { font-size: clamp(38px, 8vw, 72px); line-height: .95; letter-spacing: -.055em; margin: 0; font-weight: 700; text-wrap: balance; }
+h1 span { color: var(--quiz); }
+.lead { color: var(--mut); font-size: 17px; max-width: 60ch; margin: 0; }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+.tile { --c: var(--quiz); position: relative; text-align: left; display: grid; gap: 10px; align-content: start; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; transition: transform .2s, border-color .2s; min-width: 0; }
+.tile::after { content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%; background: var(--c); filter: blur(60px); opacity: .2; top: -70px; right: -60px; pointer-events: none; }
+.tile:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--c) 60%, transparent); }
+.tile canvas { width: 100%; height: 120px; border-radius: 14px; background: #0a0a10; border: 1px solid var(--line); display: block; }
+.tile h3 { margin: 4px 0 0; font-size: 21px; letter-spacing: -.03em; }
+.tile p { margin: 0; color: var(--mut); font-size: 14.5px; }
+.tile .meta { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+.tile .meta b { color: var(--c); font-weight: 500; }
+.crosslink { margin-top: 22px; padding: 16px 18px; border-radius: 16px; border: 1px dashed var(--line-2); color: var(--mut); font-size: 14.5px; }
+.crosslink a { color: var(--fg); font-weight: 600; }
+.view-head { display: grid; gap: 8px; padding: 14px 0 14px; }
+.back { justify-self: start; display: inline-flex; gap: 6px; align-items: center; border: 0; background: none; color: var(--mut); padding: 4px 0; font-size: 14px; }
+.back:hover { color: var(--fg); }
+h2 { margin: 0; font-size: clamp(28px, 5vw, 44px); letter-spacing: -.05em; line-height: 1; }
+.sub { color: var(--mut); margin: 0; max-width: 66ch; font-size: 15px; }
+
+/* Bühne */
+.stage { position: relative; width: 100%; border-radius: 20px; overflow: hidden; border: 1px solid var(--line-2); background: #07070b; box-shadow: 0 30px 80px -40px var(--acc); }
+.stage canvas { display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hudc { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; flex-wrap: wrap; }
+.hudc span { font-family: var(--mono); font-size: 12.5px; padding: 5px 10px; border-radius: 99px; background: rgba(5,5,7,.72); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.hudc .hearts { color: var(--bad); letter-spacing: 2px; }
+.banner { position: absolute; left: 10px; right: 10px; top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(8,8,12,.86); border: 1px solid var(--line-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; gap: 8px; pointer-events: none; }
+.banner .bq { font-weight: 650; font-size: clamp(15px, 2.6vw, 19px); letter-spacing: -.02em; line-height: 1.2; text-align: center; text-wrap: balance; }
+.banner .bo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.banner .bo span { font-size: clamp(11.5px, 2vw, 13.5px); font-weight: 600; text-align: center; padding: 6px 6px; border-radius: 9px; background: rgba(255,255,255,.07); line-height: 1.15; min-width: 0; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
+.banner .bo span small { display: block; font-family: var(--mono); font-weight: 500; font-size: 10px; color: var(--dim); margin-bottom: 2px; }
+.banner.ok { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 18%, rgba(8,8,12,.9)); }
+.banner.bad { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 18%, rgba(8,8,12,.9)); }
+.banner .tag { font-family: var(--mono); font-size: 11px; color: var(--acc); text-transform: uppercase; letter-spacing: .08em; text-align: center; }
+.banner .prog { height: 4px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+.banner .prog i { display: block; height: 100%; background: var(--acc); }
+.ov { position: absolute; inset: 0; display: grid; place-items: center; padding: 14px; background: rgba(5,5,7,.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.ov[hidden] { display: none !important; }
+.ovc { width: min(100%, 480px); max-height: 100%; overflow: auto; display: grid; gap: 12px; justify-items: center; text-align: center; padding: 22px 18px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line-2); }
+.ovc h3 { margin: 0; font-size: clamp(26px, 5vw, 36px); letter-spacing: -.045em; line-height: 1; }
+.ovc p { margin: 0; color: var(--mut); font-size: 14.5px; }
+.ovc .big { font-size: clamp(48px, 10vw, 76px); font-weight: 700; letter-spacing: -.06em; line-height: 1; color: var(--acc); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.keys span { font-family: var(--mono); font-size: 12px; padding: 5px 9px; border-radius: 8px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: var(--mut); }
+.missed { width: 100%; display: grid; gap: 6px; text-align: left; }
+.missed div { font-size: 13.5px; padding: 9px 11px; border-radius: 11px; background: color-mix(in srgb, var(--bad) 10%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
+.missed b { color: var(--ok); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; padding: 13px 20px; font-weight: 600; border: 1px solid var(--line-2); background: rgba(255,255,255,.06); }
+.btn.primary { background: var(--acc, var(--quiz)); color: #050507; border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.pad { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 12px; }
+.padbtn { padding: 16px 8px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: 18px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; }
+.padbtn:active { background: color-mix(in srgb, var(--acc) 20%, var(--surface-2)); border-color: var(--acc); }
+.tip { color: var(--dim); font-size: 13px; margin-top: 10px; }
+canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+@media (hover: hover) and (pointer: fine) { .pad.touch-only { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="glow"><i></i><i></i></div>
+<canvas id="confetti"></canvas>
+<div class="wrap" lang="de">
+  <header class="bar">
+    <button class="brand" id="home-btn" aria-label="Zur Startseite"><span class="dot"></span>Markt-Arcade</button>
+    <div class="xp" title="Erfahrungspunkte"><span>XP</span><b id="xp">0</b></div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<script>
+/* ═════════════ Inhalte ═════════════ */
+// Kurze Fragen mit 3 Antworten (für Tore, Meteore)
+const QS = [
+  { q: 'Angebot > Nachfrage. Welche Marktsituation?', o: ['Käufermarkt', 'Verkäufermarkt', 'Starrer Markt'], a: 0 },
+  { q: 'Nachfrage > Angebot. Welche Marktsituation?', o: ['Käufermarkt', 'Verkäufermarkt', 'Starrer Markt'], a: 1 },
+  { q: 'Buchpreisbindung ist ein Beispiel für …', o: ['Käufermarkt', 'Starren Markt', 'Polypol'], a: 1 },
+  { q: 'Kaffee und Tee sind …', o: ['Komplementärgüter', 'Substitutionsgüter', 'Produktionsgüter'], a: 1 },
+  { q: 'E-Bike und Wechselakku sind …', o: ['Substitutionsgüter', 'Faktoren', 'Komplementärgüter'], a: 2 },
+  { q: 'Gesetz der Nachfrage: Preis ↑, dann Nachfrage …', o: ['steigt', 'sinkt', 'bleibt gleich'], a: 1 },
+  { q: 'Gesetz des Angebots: Preis ↑, dann Angebot …', o: ['steigt', 'sinkt', 'bleibt gleich'], a: 0 },
+  { q: 'Der Schnittpunkt von N und A heißt …', o: ['Höchstpreis', 'Gleichgewichtspreis', 'Mindestpreis'], a: 1 },
+  { q: 'Preis unter dem Gleichgewicht führt zu …', o: ['Nachfrageüberhang', 'Angebotsüberhang', 'Markträumung'], a: 0 },
+  { q: 'Preis über dem Gleichgewicht führt zu …', o: ['Nachfrageüberhang', 'Gleichgewicht', 'Angebotsüberhang'], a: 2 },
+  { q: 'Ein Angebotsüberhang bedeutet …', o: ['Käufermarkt', 'Verkäufermarkt', 'Monopol'], a: 0 },
+  { q: 'Ein Höchstpreis liegt …', o: ['über dem GG', 'unter dem GG', 'genau auf dem GG'], a: 1 },
+  { q: 'Ein Mindestpreis führt zu …', o: ['Angebotsüberhang', 'Nachfrageüberhang', 'Schwarzmarkt'], a: 0 },
+  { q: 'Mietpreisbremse ist ein …', o: ['Mindestpreis', 'Höchstpreis', 'Marktpreis'], a: 1 },
+  { q: 'Wenige Anbieter, viele Nachfrager?', o: ['Polypol', 'Angebotsoligopol', 'Nachfrageoligopol'], a: 1 },
+  { q: 'Ein Anbieter, viele Nachfrager?', o: ['Angebotsmonopol', 'Nachfragemonopol', 'Oligopol'], a: 0 },
+  { q: 'Viele Anbieter, wenige Nachfrager?', o: ['Angebotsoligopol', 'Polypol', 'Nachfrageoligopol'], a: 2 },
+  { q: 'Am nächsten am vollkommenen Markt ist …', o: ['Mobilfunk', 'die Börse', 'Leitungswasser'], a: 1 },
+  { q: 'Preis zeigt, wie knapp ein Gut ist?', o: ['Signalfunktion', 'Lenkungsfunktion', 'Auslesefunktion'], a: 0 },
+  { q: 'Preis räumt den Markt?', o: ['Auslesefunktion', 'Ausgleichsfunktion', 'Signalfunktion'], a: 1 },
+  { q: 'Zu teure Anbieter fliegen raus?', o: ['Lenkungsfunktion', 'Signalfunktion', 'Auslesefunktion'], a: 2 },
+  { q: 'Bessere Abläufe senken die Kosten um 10 %. Welche Bestimmungsgröße?', o: ['Kosten der Produktion', 'Wettbewerb', 'Unternehmensziel'], a: 0 },
+  { q: 'Kampfpreise für 12 % Marktanteil. Welche Bestimmungsgröße?', o: ['Marktpreis', 'Unternehmensziel', 'Externe Faktoren'], a: 1 },
+  { q: 'Welcher ist ein Faktormarkt?', o: ['Konsumgütermarkt', 'Headset-Markt', 'Kapitalmarkt'], a: 2 },
+  { q: 'Auf dem Arbeitsmarkt bist du …', o: ['Anbieter', 'Nachfrager', 'der Staat'], a: 0 },
+  { q: 'Angebot steigt. Was passiert mit dem Preis?', o: ['steigt', 'sinkt', 'bleibt gleich'], a: 1 },
+  { q: 'Nachfrage sinkt. Was passiert mit der Menge?', o: ['steigt', 'bleibt gleich', 'sinkt'], a: 2 },
+  { q: 'Schlechte Ernte. Welche Kurve verschiebt sich wohin?', o: ['A nach links', 'A nach rechts', 'N nach rechts'], a: 0 },
+  { q: 'Netter Shop-Mitarbeiter: Was fehlt zum vollkommenen Markt?', o: ['Transparenz', 'Keine Präferenzen', 'Marktzugang'], a: 1 },
+  { q: 'Staatliche Zulassung nötig: Was fehlt?', o: ['Freier Marktzugang', 'Homogene Güter', 'Polypol'], a: 0 },
+  { q: 'Zwei Aufgaben des Marktes: Vermittlung und …', o: ['Preisbildung', 'Werbung', 'Lagerung'], a: 0 },
+  { q: '6 €: N 400 / A 400. Was liegt bei 6 € vor?', o: ['Überhang', 'Gleichgewicht', 'Starrer Markt'], a: 1 },
+];
+
+// Kategorien für den Begriffs-Regen
+const CATS = [
+  { name: 'Faktormärkte', good: ['Arbeitsmarkt', 'Kapitalmarkt', 'Immobilienmarkt'], bad: ['Konsumgütermarkt', 'Produktionsgütermarkt', 'Headset-Markt', 'Wochenmarkt'] },
+  { name: 'Bestimmungsgrößen der Nachfrage', good: ['Einkommen', 'Vorlieben', 'Komplementärgüter', 'Substitutionsgüter', 'Externe Faktoren', 'Preis des Gutes'], bad: ['Produktionskosten', 'Wettbewerbssituation', 'Unternehmensziel'] },
+  { name: 'Bestimmungsgrößen des Angebots', good: ['Produktionskosten', 'Wettbewerbssituation', 'Unternehmensziel', 'Erzielbarer Marktpreis', 'Externe Faktoren'], bad: ['Einkommen', 'Vorlieben', 'Komplementärgüter', 'Substitutionsgüter'] },
+  { name: 'Voraussetzungen des vollkommenen Markts', good: ['Polypol', 'Freier Marktzugang', 'Homogene Güter', 'Keine Präferenzen', 'Markttransparenz', 'Sofortige Reaktion'], bad: ['Monopol', 'Lizenzpflicht', 'Markentreue', 'Verschiedene Güter', 'Lange Verträge'] },
+  { name: 'Funktionen des Marktpreises', good: ['Ausgleichsfunktion', 'Signalfunktion', 'Lenkungsfunktion', 'Auslesefunktion'], bad: ['Werbefunktion', 'Lagerfunktion', 'Steuerfunktion', 'Vermittlung'] },
+  { name: 'Folgen eines Höchstpreises', good: ['Nachfrageüberhang', 'Schwarzmarkt', 'Warteschlangen', 'Knappheit'], bad: ['Angebotsüberhang', 'Überschüsse', 'Staat kauft auf', 'Markträumung'] },
+  { name: 'Folgen eines Mindestpreises', good: ['Angebotsüberhang', 'Überschüsse', 'Staat kauft auf', 'Lagerkosten'], bad: ['Nachfrageüberhang', 'Schwarzmarkt', 'Warteschlangen'] },
+  { name: 'Beispiele Verkäufermarkt', good: ['Benzin', 'Luxussportwagen', 'Mais-Defizit'], bad: ['PC', 'Pkw', 'Buchpreisbindung', 'Windpark-Zulieferer'] },
+];
+
+// Marktereignisse für die Gleichgewichts-Jagd
+const EVENTS = [
+  { t: 'Kartoffeln: schlechte Ernte nach Hitzesommer', k: 'A', d: -1 },
+  { t: 'Flüge: Kerosinkosten steigen stark', k: 'A', d: -1 },
+  { t: 'Weihnachtsbäume: viele Erzeuger geben auf', k: 'A', d: -1 },
+  { t: 'Headsets: Hersteller verbessert die Fertigung', k: 'A', d: 1 },
+  { t: 'Kartoffeln: Rekordernte', k: 'A', d: 1 },
+  { t: 'Laptops: neue Anbieter drängen auf den Markt', k: 'A', d: 1 },
+  { t: 'E-Bikes: Tarifeinkommen steigen', k: 'N', d: 1 },
+  { t: 'Sneaker: Modell wird zum TikTok-Trend', k: 'N', d: 1 },
+  { t: 'E-Bikes: Wechselakkus werden billiger', k: 'N', d: 1 },
+  { t: 'Deutschlandticket: Tankrabatt macht Autofahren billiger', k: 'N', d: -1 },
+  { t: 'Eis: kühler, verregneter Sommer', k: 'N', d: -1 },
+  { t: 'Laptops: Geräte werden länger genutzt', k: 'N', d: -1 },
+];
+
+/* ═════════════ Infrastruktur ═════════════ */
+const COL = { lime: '#C6FF3D', violet: '#8B6CFF', blue: '#3D8BFF', orange: '#FF8A3D', mint: '#2EE6A6', pink: '#FF4D8D', yellow: '#FFD23D', cyan: '#4DE1FF', bad: '#FF5C6C', fg: '#F5F5F7' };
+const PAL = [COL.violet, COL.blue, COL.orange, COL.mint, COL.pink, COL.yellow, COL.cyan, COL.lime];
+const FONT = "'Geist', ui-sans-serif, system-ui, sans-serif";
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('arcade:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('arcade:' + k, JSON.stringify(v)); } catch {} },
+};
+const ST = { xp: store.get('xp', 0), best: store.get('best', {}) };
+$('#xp').textContent = ST.xp;
+function addXP(n) { ST.xp += n; store.set('xp', ST.xp); $('#xp').textContent = ST.xp; }
+function saveBest(id, v) { if (v > (ST.best[id] ?? -1)) { ST.best[id] = v; store.set('best', ST.best); return true; } return false; }
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let disposers = [];
+function onDispose(f) { disposers.push(f); }
+function listen(t, type, fn, opt) { t.addEventListener(type, fn, opt); onDispose(() => t.removeEventListener(type, fn, opt)); }
+function loop(fn) {
+  let last = performance.now(), id = 0, alive = true;
+  const f = (t) => { if (!alive) return; id = requestAnimationFrame(f); const dt = Math.min(0.05, (t - last) / 1000); last = t; if (!document.hidden) fn(dt, t); };
+  id = requestAnimationFrame(f);
+  onDispose(() => { alive = false; cancelAnimationFrame(id); });
+}
+function rr(c, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function wrapText(c, text, maxW) { const words = text.split(' '); const lines = []; let cur = ''; for (const w of words) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur); return lines; }
+
+/* Konfetti */
+const cv0 = $('#confetti'), cx0 = cv0.getContext('2d'); let confParts = [], confRaf = 0;
+function confetti(n = 110) {
+  if (reduceMotion) return;
+  cv0.width = innerWidth * devicePixelRatio; cv0.height = innerHeight * devicePixelRatio;
+  for (let i = 0; i < n; i++) confParts.push({ x: innerWidth / 2, y: innerHeight * .35, vx: rnd(-7, 7), vy: rnd(-16, -4), s: rnd(4, 11), r: rnd(0, 6), vr: rnd(-.15, .15), c: PAL[i % PAL.length], life: 0 });
+  if (!confRaf) confTick();
+}
+function confTick() {
+  cx0.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); cx0.clearRect(0, 0, innerWidth, innerHeight);
+  confParts.forEach(p => { p.vy += .35; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life++; cx0.save(); cx0.translate(p.x, p.y); cx0.rotate(p.r); cx0.fillStyle = p.c; cx0.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); cx0.restore(); });
+  confParts = confParts.filter(p => p.y < innerHeight + 40 && p.life < 240);
+  confRaf = confParts.length ? requestAnimationFrame(confTick) : (cx0.clearRect(0, 0, innerWidth, innerHeight), 0);
+}
+
+/* ═════════════ Router & Gerüst ═════════════ */
+const GAMES = [
+  { id: 'run', name: 'Markt-Run', c: '--quiz', desc: 'Endlos-Runner auf drei Spuren: Lauf durch das Tor mit der richtigen Antwort, spring über Hürden, sammle €-Münzen.', topics: 'Alle Themen' },
+  { id: 'regen', name: 'Begriffs-Regen', c: '--n', desc: 'Begriffe fallen vom Himmel. Fang mit dem Marktkorb nur die, die zur Kategorie passen.', topics: 'Bestimmungsgrößen · Faktormärkte · Funktionen' },
+  { id: 'blaster', name: 'Antwort-Blaster', c: '--formen', desc: 'Meteore mit Antworten rasen auf dich zu. Schieß den richtigen ab, bevor er einschlägt.', topics: 'Alle Themen' },
+  { id: 'jagd', name: 'Gleichgewichts-Jagd', c: '--gg', desc: 'Marktereignisse verschieben die Kurven. Steuer den Preis so schnell wie möglich ins neue Gleichgewicht.', topics: 'Gleichgewicht · Verschiebungen' },
+];
+function setAccent(c) { document.documentElement.style.setProperty('--acc', `var(${c})`); }
+function route() {
+  disposers.forEach(f => { try { f(); } catch {} }); disposers = [];
+  const id = location.hash.slice(1); const g = GAMES.find(x => x.id === id);
+  window.scrollTo(0, 0);
+  if (!g) return renderHome();
+  setAccent(g.c);
+  ({ run: gameRun, regen: gameRain, blaster: gameBlaster, jagd: gameHunt })[id](g);
+}
+addEventListener('hashchange', route);
+$('#home-btn').onclick = () => { location.hash = ''; };
+
+function renderHome() {
+  setAccent('--quiz');
+  app.innerHTML = `
+    <section class="hero"><span class="kicker">KDM 25a · Klausur Di, 17.11.</span>
+      <h1>Markt-Arcade.<br><span>Zocken = Lernen.</span></h1>
+      <p class="lead">Vier Action-Spiele zum Klausurstoff Markt und Preisbildung. Jede Runde fragt Marktsituationen, Bestimmungsgrößen, Gleichgewicht, Marktformen, Staatseingriffe und Preisfunktionen ab.</p></section>
+    <section class="games">${GAMES.map((g, i) => { const b = ST.best[g.id]; return `<button class="tile" style="--c:var(${g.c})" onclick="location.hash='${g.id}'"><canvas data-prev="${i}"></canvas><h3>${g.name}</h3><p>${g.desc}</p><div class="meta"><span>${b == null ? 'noch nicht gespielt' : 'Rekord ' + b}</span><b>Spielen →</b></div></button>`; }).join('')}</section>
+    <p class="crosslink">Lieber in Ruhe üben? In der <a href="https://claude.ai/artifact/ADXuf6xQhw4GThyjx8EX6n" target="_blank" rel="noopener">Markt-Arena</a> gibt es Quiz, Sortieren, Kurven-Lab, Preis-Regler und Memory.</p>`;
+  // kleine animierte Vorschauen
+  const cvs = [...app.querySelectorAll('canvas[data-prev]')];
+  loop((dt, t) => cvs.forEach(cv => drawPreview(cv, +cv.dataset.prev, t / 1000)));
+}
+function drawPreview(cv, i, t) {
+  const w = cv.clientWidth, h = cv.clientHeight, d = devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+  const c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
+  if (i === 0) { // Straße
+    const hy = h * .2; c.strokeStyle = 'rgba(198,255,61,.6)'; c.lineWidth = 1.5;
+    for (const l of [-1.5, -.5, .5, 1.5]) { c.beginPath(); c.moveTo(w / 2 + l * 6, hy); c.lineTo(w / 2 + l * w * .22, h); c.stroke(); }
+    for (let k = 0; k < 8; k++) { const z = ((k + t * 2) % 8) / 8; const y = hy + (h - hy) * z * z; c.strokeStyle = `rgba(255,255,255,${z * .25})`; c.beginPath(); c.moveTo(w / 2 - z * w * .33, y); c.lineTo(w / 2 + z * w * .33, y); c.stroke(); }
+    const x = w / 2 + Math.sin(t * 1.5) * w * .15, y = h - 26 - Math.abs(Math.sin(t * 3)) * 12; c.fillStyle = COL.lime; rr(c, x - 8, y - 10, 16, 20, 6); c.fill(); c.fillStyle = COL.fg; c.beginPath(); c.arc(x, y - 16, 7, 0, 7); c.fill();
+  } else if (i === 1) { // Regen
+    ['Einkommen', 'Monopol', 'Polypol', 'Signal'].forEach((s, k) => { const y = ((t * 30 + k * 40) % (h + 30)) - 20; const x = 30 + k * (w - 60) / 3; c.font = `600 11px ${FONT}`; const tw = c.measureText(s).width + 16; c.fillStyle = '#1b1b25'; rr(c, x - tw / 2, y - 10, tw, 20, 10); c.fill(); c.strokeStyle = 'rgba(255,255,255,.2)'; c.stroke(); c.fillStyle = COL.fg; c.textAlign = 'center'; c.fillText(s, x, y + 4); });
+    const bx = w / 2 + Math.sin(t) * w * .3; c.fillStyle = COL.blue; rr(c, bx - 30, h - 18, 60, 12, 5); c.fill();
+  } else if (i === 2) { // Blaster
+    for (let k = 0; k < 30; k++) { c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect((k * 53) % w, (k * 37 + t * 40) % h, 1.5, 1.5); }
+    [0.25, .5, .75].forEach((p, k) => { const x = w * p, y = 30 + Math.sin(t + k) * 8; c.fillStyle = '#231a26'; c.strokeStyle = COL.pink; c.beginPath(); c.arc(x, y, 18, 0, 7); c.fill(); c.stroke(); });
+    const sx = w / 2 + Math.sin(t * 1.3) * w * .25; c.fillStyle = COL.pink; c.beginPath(); c.moveTo(sx, h - 26); c.lineTo(sx - 12, h - 8); c.lineTo(sx + 12, h - 8); c.fill();
+    c.fillStyle = COL.lime; c.fillRect(sx - 1, h - 26 - ((t * 200) % 60), 2, 10);
+  } else { // Jagd
+    const X = q => 20 + q * (w - 40), Y = p => h - 12 - p * (h - 24); const s = Math.sin(t) * .12;
+    c.lineWidth = 3; c.strokeStyle = COL.blue; c.beginPath(); c.moveTo(X(.1), Y(.9)); c.lineTo(X(.9), Y(.1)); c.stroke();
+    c.strokeStyle = COL.orange; c.beginPath(); c.moveTo(X(.1 + s), Y(.1)); c.lineTo(X(.9 + s), Y(.9)); c.stroke();
+    const pe = .5 - s / 2; c.setLineDash([5, 4]); c.strokeStyle = COL.yellow; c.lineWidth = 2; c.beginPath(); c.moveTo(X(0), Y(pe + Math.sin(t * 2.3) * .05)); c.lineTo(X(1), Y(pe + Math.sin(t * 2.3) * .05)); c.stroke(); c.setLineDash([]);
+  }
+}
+
+const backIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
+function stage(g, sub, ratio, pad, padTouchOnly) {
+  app.innerHTML = `<div class="view-head"><button class="back" onclick="location.hash=''">${backIcon} Arcade</button><span class="kicker">${g.topics}</span><h2>${g.name}</h2><p class="sub">${sub}</p></div>
+    <div class="stage" id="stage"><canvas id="cv"></canvas><div class="banner" id="banner" hidden></div><div class="hudc" id="hudc"></div><div class="ov" id="ov"></div></div>
+    ${pad ? `<div class="pad ${padTouchOnly ? 'touch-only' : ''}">${pad.map(([k, l]) => `<button class="padbtn" data-k="${k}" aria-label="${k}">${l}</button>`).join('')}</div>` : ''}`;
+  const cv = $('#cv'), ctx = cv.getContext('2d'), wrap = $('#stage');
+  const api = { cv, ctx, dim: { w: 0, h: 0 }, banner: $('#banner'), hud: $('#hudc'), ov: $('#ov'), onPad: null };
+  const size = () => {
+    const w = wrap.clientWidth;
+    const h = Math.round(Math.min(Math.max(w * ratio, 420), Math.max(420, innerHeight - 250), 660));
+    const d = devicePixelRatio || 1;
+    wrap.style.height = h + 'px'; cv.width = Math.round(w * d); cv.height = Math.round(h * d); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    ctx.setTransform(d, 0, 0, d, 0, 0); api.dim.w = w; api.dim.h = h;
+  };
+  size(); listen(window, 'resize', size);
+  app.querySelectorAll('.padbtn').forEach(b => {
+    const k = b.dataset.k; let down = false;
+    const up = () => { if (down) { down = false; api.onPad?.(k, false); } };
+    b.addEventListener('pointerdown', e => { e.preventDefault(); down = true; try { b.setPointerCapture(e.pointerId); } catch {} api.onPad?.(k, true); });
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  });
+  api.showOv = (html) => { api.ov.innerHTML = `<div class="ovc">${html}</div>`; api.ov.hidden = false; const b = api.ov.querySelector('.btn.primary'); b?.focus(); };
+  api.hideOv = () => { api.ov.hidden = true; };
+  api.setHud = (parts) => { const html = parts.map(([cls, txt]) => `<span class="${cls}">${txt}</span>`).join(''); if (api._hud !== html) { api.hud.innerHTML = html; api._hud = html; } };
+  return api;
+}
+function startCard(title, text, keys) {
+  return `<h3>${title}</h3><p>${text}</p><div class="keys">${keys.map(k => `<span>${k}</span>`).join('')}</div><button class="btn primary" data-start>Los geht’s</button>`;
+}
+function endCard(title, score, rec, lines, missed) {
+  return `<span class="kicker">${rec ? 'Neuer Rekord' : 'Game over'}</span><h3>${title}</h3><div class="big">${score}</div><p>${lines}</p>
+    ${missed.length ? `<div class="missed"><p style="text-align:left">Das solltest du dir merken:</p>${missed.slice(0, 6).map(m => `<div>${m.q}<br>Richtig: <b>${m.a}</b></div>`).join('')}</div>` : ''}
+    <div class="row"><button class="btn primary" data-start>Nochmal</button><button class="btn" onclick="location.hash=''">Zur Arcade</button></div>`;
+}
+function hearts(n, max = 3) { return '♥'.repeat(Math.max(0, n)) + '♡'.repeat(Math.max(0, max - n)); }
+
+/* ═════════════ 1 · Markt-Run ═════════════ */
+function gameRun(g) {
+  const st = stage(g, 'Lauf durch das Tor mit der richtigen Antwort. Die Frage steht oben, die Antworten von links nach rechts. Spur wechseln mit ◀ ▶ (oder wischen), über rote Hürden springen mit ▲ (oder nach oben wischen).', 0.72, [['L', '◀'], ['J', '▲'], ['R', '▶']], true);
+  const { ctx } = st; const JD = 0.62;
+  let S = null, pool = [];
+  function reset() {
+    pool = shuffle(QS);
+    S = { run: true, over: false, t: 0, dist: 0, speed: 12.5, lane: 0, lx: 0, jump: -1, ents: [], gates: {}, gid: 0, nextGate: 55, fill: 12, hearts: 3, coins: 0, score: 0, correct: 0, combo: 0, inv: 0, shake: 0, flash: 0, flashCol: COL.bad, parts: [], missed: [], fb: null, shownGid: -1 };
+  }
+  function spawnGate(z) {
+    const q = pool.length ? pool.pop() : (pool = shuffle(QS), pool.pop());
+    const order = shuffle([0, 1, 2]); const gid = ++S.gid;
+    S.gates[gid] = { q, order, res: null };
+    order.forEach((oi, li) => S.ents.push({ type: 'gate', z, lane: li - 1, gid, label: q.o[oi], ok: oi === q.a }));
+  }
+  function spawn() {
+    const ahead = S.dist + 115;
+    while (S.nextGate < ahead) { spawnGate(S.nextGate); S.fill = S.nextGate + 14; S.nextGate += Math.max(72, S.speed * 5.6); }
+    while (S.fill < Math.min(ahead, S.nextGate - 16)) {
+      const r = Math.random(), l = pick([-1, 0, 1]);
+      if (r < .5) { for (let i = 0; i < 5; i++) S.ents.push({ type: 'coin', z: S.fill + i * 2.6, lane: l }); S.fill += 19; }
+      else if (r < .85 && S.t > 3) { S.ents.push({ type: 'bar', z: S.fill, lane: l }); if (Math.random() < .3) S.ents.push({ type: 'bar', z: S.fill, lane: pick([-1, 0, 1].filter(x => x !== l)) }); S.fill += 13; }
+      else S.fill += 8;
+    }
+  }
+  function burst(x, y, col, n = 18) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-160, 160), vy: rnd(-260, -40), life: rnd(.4, .8), col }); }
+  function lane(dir) { if (S && S.run) S.lane = Math.max(-1, Math.min(1, S.lane + dir)); }
+  function jump() { if (S && S.run && S.jump < 0) S.jump = 0; }
+  st.onPad = (k, down) => { if (!down) return; if (k === 'L') lane(-1); if (k === 'R') lane(1); if (k === 'J') jump(); };
+  listen(window, 'keydown', e => {
+    if (!S?.run) return;
+    if (['ArrowLeft', 'a', 'A'].includes(e.key)) { lane(-1); e.preventDefault(); }
+    if (['ArrowRight', 'd', 'D'].includes(e.key)) { lane(1); e.preventDefault(); }
+    if (['ArrowUp', 'w', 'W', ' '].includes(e.key)) { jump(); e.preventDefault(); }
+  });
+  let sw = null;
+  listen(st.cv, 'pointerdown', e => { sw = { x: e.clientX, y: e.clientY }; });
+  listen(st.cv, 'pointerup', e => { if (!sw) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y; sw = null; if (Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)) lane(dx > 0 ? 1 : -1); else if (dy < -28) jump(); else if (Math.abs(dx) < 10 && Math.abs(dy) < 10) { const r = st.cv.getBoundingClientRect(); const x = e.clientX - r.left; if (x < r.width / 3) lane(-1); else if (x > r.width * 2 / 3) lane(1); else jump(); } });
+
+  function resolveGate(gid) {
+    const G = S.gates[gid]; if (G.res) return;
+    const pl = Math.round(S.lx); const parts = S.ents.filter(e => e.gid === gid); parts.forEach(p => p.done = true);
+    const chosen = parts.find(p => p.lane === pl); const right = parts.find(p => p.ok);
+    G.res = chosen.ok ? 'ok' : 'bad'; G.chosenLane = pl;
+    const W = st.dim.w, H = st.dim.h;
+    if (chosen.ok) { S.correct++; S.score += 100 + 25 * Math.min(S.combo, 6); S.combo++; addXP(10); burst(W / 2 + S.lx * laneW(), H * .7, COL.mint, 26); S.flash = .6; S.flashCol = COL.mint; S.fb = { ok: true, txt: `Richtig! ${right.label}`, t: 1.4 }; if (S.combo % 5 === 0) confetti(60); }
+    else { S.combo = 0; S.hearts--; S.shake = 1; S.flash = 1; S.flashCol = COL.bad; S.missed.push({ q: G.q.q, a: right.label }); S.fb = { ok: false, txt: `Falsch. Richtig: ${right.label}`, t: 1.8 }; }
+  }
+  const laneW = () => Math.min(st.dim.w * .25, 170);
+  function update(dt) {
+    S.t += dt; S.speed = Math.min(27, 12.5 + S.t * .11); S.dist += S.speed * dt;
+    S.lx += (S.lane - S.lx) * Math.min(1, dt * 14);
+    if (S.jump >= 0) { S.jump += dt; if (S.jump > JD) S.jump = -1; }
+    S.inv = Math.max(0, S.inv - dt); S.shake = Math.max(0, S.shake - dt * 2.5); S.flash = Math.max(0, S.flash - dt * 2.2);
+    if (S.fb) { S.fb.t -= dt; if (S.fb.t <= 0) S.fb = null; }
+    spawn();
+    const pl = Math.round(S.lx), jh = S.jump >= 0 ? Math.sin(Math.PI * S.jump / JD) : 0;
+    for (const e of S.ents) {
+      if (e.done || e.z - S.dist > 0) continue;
+      if (e.type === 'gate') { resolveGate(e.gid); continue; }
+      e.done = true;
+      if (e.lane !== pl) continue;
+      if (e.type === 'coin') { S.coins++; S.score += 5; e.got = true; }
+      if (e.type === 'bar' && jh < .45 && S.inv <= 0) { S.hearts--; S.inv = 1.2; S.shake = .8; S.flash = .8; S.flashCol = COL.bad; S.combo = 0; }
+    }
+    S.ents = S.ents.filter(e => e.z - S.dist > -2.2 && !(e.got));
+    S.parts.forEach(p => { p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }); S.parts = S.parts.filter(p => p.life > 0);
+    if (S.hearts <= 0) gameOver();
+  }
+  function banner() {
+    const b = st.banner;
+    if (S.fb) { const html = `<div class="bq">${S.fb.txt}</div>`; b.className = 'banner ' + (S.fb.ok ? 'ok' : 'bad'); if (b._h !== html) { b.innerHTML = html; b._h = html; } b.hidden = false; return; }
+    const open = S.ents.filter(e => e.type === 'gate' && !e.done).sort((a, b) => a.z - b.z)[0];
+    if (!open) { b.hidden = true; return; }
+    const G = S.gates[open.gid];
+    const html = `<div class="bq">${G.q.q}</div><div class="bo">${G.order.map((oi, li) => `<span><small>${['LINKS', 'MITTE', 'RECHTS'][li]}</small>${G.q.o[oi]}</span>`).join('')}</div>`;
+    b.className = 'banner'; if (b._h !== html) { b.innerHTML = html; b._h = html; } b.hidden = false;
+  }
+  function draw() {
+    const W = st.dim.w, H = st.dim.h, c = ctx, LW = laneW(), u = LW / 150;
+    const hy = H * .38, by = Math.min(H * .9, H - 54);
+    c.save();
+    if (S.shake > 0 && !reduceMotion) c.translate(rnd(-1, 1) * S.shake * 10, rnd(-1, 1) * S.shake * 7);
+    let gr = c.createLinearGradient(0, 0, 0, hy); gr.addColorStop(0, '#050507'); gr.addColorStop(1, '#151030'); c.fillStyle = gr; c.fillRect(-20, -20, W + 40, hy + 22);
+    const rg = c.createRadialGradient(W / 2, hy, 0, W / 2, hy, W * .55); rg.addColorStop(0, 'rgba(139,108,255,.5)'); rg.addColorStop(1, 'rgba(139,108,255,0)'); c.fillStyle = rg; c.fillRect(-20, 0, W + 40, hy + 30);
+    // Skyline aus Kurven-Silhouetten
+    c.fillStyle = '#0d0b1c'; c.beginPath(); c.moveTo(0, hy); for (let x = 0; x <= W; x += 24) { const hh = 18 + ((x * 7919) % 47); c.lineTo(x, hy - hh); c.lineTo(x + 24, hy - hh); } c.lineTo(W, hy); c.fill();
+    c.fillStyle = '#08080c'; c.fillRect(-20, hy, W + 40, H - hy + 20);
+    const P = (z, l) => { const d = Math.max(-1.6, z - S.dist); const s = 1 / (1 + d / 9); return { x: W / 2 + l * LW * s, y: hy + (by - hy) * s, s }; };
+    const far = P(S.dist + 400, 0), near = P(S.dist - 1.6, 0);
+    gr = c.createLinearGradient(0, hy, 0, H); gr.addColorStop(0, '#0e0e16'); gr.addColorStop(1, '#1b1b27'); c.fillStyle = gr;
+    c.beginPath(); c.moveTo(W / 2 - 1.5 * LW * far.s, far.y); c.lineTo(W / 2 + 1.5 * LW * far.s, far.y); c.lineTo(W / 2 + 1.5 * LW * near.s, near.y); c.lineTo(W / 2 - 1.5 * LW * near.s, near.y); c.closePath(); c.fill();
+    for (let k = 0; k < 50; k++) { const z = Math.ceil(S.dist / 5) * 5 + k * 5; const p = P(z, 0); if (p.s < .03) break; c.strokeStyle = `rgba(255,255,255,${.05 * p.s + .01})`; c.lineWidth = 1; c.beginPath(); c.moveTo(W / 2 - 1.5 * LW * p.s, p.y); c.lineTo(W / 2 + 1.5 * LW * p.s, p.y); c.stroke(); }
+    for (const l of [-1.5, 1.5]) { c.strokeStyle = COL.violet; c.lineWidth = 2.5; c.shadowColor = COL.violet; c.shadowBlur = 12; c.beginPath(); c.moveTo(W / 2 + l * LW * far.s, far.y); c.lineTo(W / 2 + l * LW * near.s, near.y); c.stroke(); c.shadowBlur = 0; }
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2;
+    for (const l of [-.5, .5]) for (let k = 0; k < 40; k++) { const z = Math.floor(S.dist / 4) * 4 + k * 4; const a = P(z, l), b = P(z + 2, l); if (b.s < .04) break; c.lineWidth = 2.5 * a.s; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); }
+    // Marktstände am Rand
+    for (let k = 30; k >= 0; k--) { const z = Math.ceil(S.dist / 9) * 9 + k * 9; for (const side of [-1, 1]) { const p = P(z, side * 2.2); if (p.s < .05) continue; const hh = 120 * p.s * u, ww = 46 * p.s * u; const col = PAL[(Math.round(z / 9) + (side > 0 ? 3 : 0)) % PAL.length]; c.globalAlpha = Math.min(1, p.s * 2.2); c.fillStyle = '#13131c'; c.fillRect(p.x - ww / 2, p.y - hh * .55, ww, hh * .55); c.fillStyle = col; c.fillRect(p.x - ww / 2 - 3 * p.s, p.y - hh * .62, ww + 6 * p.s, 9 * p.s * u); c.fillStyle = col; c.globalAlpha *= .9; c.font = `700 ${Math.max(6, 16 * p.s * u)}px ${FONT}`; c.textAlign = 'center'; c.fillText(Math.round(z / 9) % 3 === 0 ? '€' : Math.round(z / 9) % 3 === 1 ? '%' : '↑↓', p.x, p.y - hh * .25); c.globalAlpha = 1; } }
+    const ents = S.ents.slice().sort((a, b) => b.z - a.z);
+    const drawEnt = (e) => {
+      const p = P(e.z, e.lane); if (p.s < .045) return;
+      if (e.type === 'coin') { const r = 12 * p.s * u, y = p.y - 26 * p.s * u + Math.sin(S.t * 6 + e.z) * 3 * p.s; c.fillStyle = COL.yellow; c.shadowColor = COL.yellow; c.shadowBlur = 10 * p.s; c.beginPath(); c.arc(p.x, y, r, 0, 7); c.fill(); c.shadowBlur = 0; c.fillStyle = '#5a4300'; c.font = `800 ${r * 1.25}px ${FONT}`; c.textAlign = 'center'; c.fillText('€', p.x, y + r * .45); }
+      if (e.type === 'bar') { const w = LW * .78 * p.s, h = 30 * p.s * u; c.fillStyle = COL.bad; rr(c, p.x - w / 2, p.y - h, w, h, 4 * p.s); c.fill(); c.save(); c.clip(); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 6 * p.s; for (let i = -3; i < 8; i++) { c.beginPath(); c.moveTo(p.x - w / 2 + i * 14 * p.s, p.y); c.lineTo(p.x - w / 2 + i * 14 * p.s + h, p.y - h); c.stroke(); } c.restore(); c.fillStyle = '#fff'; c.font = `700 ${Math.max(6, 11 * p.s * u)}px ${FONT}`; c.textAlign = 'center'; if (p.s > .35) c.fillText('HÜRDE', p.x, p.y - h - 5 * p.s); }
+      if (e.type === 'gate') {
+        const G = S.gates[e.gid]; const w = LW * .9 * p.s, ph = 54 * p.s * u, top = p.y - 128 * p.s * u;
+        let col = 'rgba(255,255,255,.55)'; if (G.res) col = e.ok ? COL.mint : (e.lane === G.chosenLane ? COL.bad : 'rgba(255,255,255,.3)');
+        c.strokeStyle = col; c.lineWidth = 3 * p.s; c.beginPath(); c.moveTo(p.x - w / 2, p.y); c.lineTo(p.x - w / 2, top + ph); c.moveTo(p.x + w / 2, p.y); c.lineTo(p.x + w / 2, top + ph); c.stroke();
+        c.fillStyle = 'rgba(17,17,23,.92)'; rr(c, p.x - w / 2, top, w, ph, 8 * p.s); c.fill(); c.strokeStyle = col; c.lineWidth = 2 * p.s; c.stroke();
+        c.fillStyle = 'rgba(198,255,61,.07)'; c.fillRect(p.x - w / 2, top + ph, w, p.y - top - ph);
+        const fs = 14 * p.s * u;
+        c.fillStyle = COL.fg; c.textAlign = 'center';
+        if (fs >= 6.5) { c.font = `650 ${fs}px ${FONT}`; const lines = wrapText(c, e.label, w - 10 * p.s).slice(0, 2); lines.forEach((ln, i) => c.fillText(ln, p.x, top + ph / 2 + (i - (lines.length - 1) / 2) * fs * 1.15 + fs * .35)); }
+        else { c.font = `700 ${Math.max(5, fs * 1.6)}px ${FONT}`; c.fillText(['L', 'M', 'R'][e.lane + 1], p.x, top + ph / 2 + 3); }
+      }
+    };
+    ents.filter(e => e.z - S.dist >= 0).forEach(drawEnt);
+    // Läufer: eigene Figur mit Headset
+    const jh = S.jump >= 0 ? Math.sin(Math.PI * S.jump / JD) : 0;
+    const px = W / 2 + S.lx * LW, py = by - jh * 78 * u, sc = u * 1.05;
+    c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.ellipse(px, by + 4, 22 * sc * (1 - jh * .4), 7 * sc * (1 - jh * .4), 0, 0, 7); c.fill();
+    if (!(S.inv > 0 && Math.floor(S.t * 12) % 2)) {
+      const ph = S.t * 15, leg = Math.sin(ph) * (S.jump >= 0 ? .3 : 1);
+      c.strokeStyle = '#d8dbe6'; c.lineWidth = 6 * sc; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(px - 6 * sc, py - 20 * sc); c.lineTo(px - 6 * sc + leg * 9 * sc, py - 2 * sc); c.moveTo(px + 6 * sc, py - 20 * sc); c.lineTo(px + 6 * sc - leg * 9 * sc, py - 2 * sc); c.stroke();
+      c.fillStyle = COL.lime; c.shadowColor = COL.lime; c.shadowBlur = 16; rr(c, px - 15 * sc, py - 54 * sc, 30 * sc, 36 * sc, 11 * sc); c.fill(); c.shadowBlur = 0;
+      c.strokeStyle = COL.lime; c.lineWidth = 5 * sc; c.beginPath(); c.moveTo(px - 15 * sc, py - 44 * sc); c.lineTo(px - 24 * sc, py - 32 * sc - leg * 6 * sc); c.moveTo(px + 15 * sc, py - 44 * sc); c.lineTo(px + 24 * sc, py - 32 * sc + leg * 6 * sc); c.stroke();
+      c.fillStyle = '#050507'; c.font = `800 ${13 * sc}px ${FONT}`; c.textAlign = 'center'; c.fillText('€', px, py - 31 * sc);
+      c.fillStyle = COL.fg; c.beginPath(); c.arc(px, py - 66 * sc, 13 * sc, 0, 7); c.fill();
+      c.fillStyle = '#1a1830'; rr(c, px - 10 * sc, py - 70 * sc, 20 * sc, 7 * sc, 3 * sc); c.fill();
+      c.strokeStyle = COL.violet; c.lineWidth = 3.5 * sc; c.beginPath(); c.arc(px, py - 67 * sc, 15 * sc, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+      c.fillStyle = COL.violet; rr(c, px - 18 * sc, py - 71 * sc, 6 * sc, 10 * sc, 2 * sc); c.fill(); rr(c, px + 12 * sc, py - 71 * sc, 6 * sc, 10 * sc, 2 * sc); c.fill();
+      c.lineWidth = 2 * sc; c.beginPath(); c.moveTo(px + 15 * sc, py - 62 * sc); c.quadraticCurveTo(px + 14 * sc, py - 54 * sc, px + 5 * sc, py - 55 * sc); c.stroke();
+    }
+    ents.filter(e => e.z - S.dist < 0).forEach(drawEnt);
+    S.parts.forEach(p => { c.globalAlpha = Math.max(0, p.life * 1.4); c.fillStyle = p.col; c.fillRect(p.x, p.y, 4, 4); }); c.globalAlpha = 1;
+    if (S.flash > 0) { c.globalAlpha = S.flash * .22; c.fillStyle = S.flashCol; c.fillRect(-20, -20, W + 40, H + 40); c.globalAlpha = 1; }
+    c.restore();
+    st.setHud([['hearts', hearts(S.hearts)], ['', `€ ${S.coins}`], ['', `Richtig ${S.correct}`], ['', S.combo >= 2 ? `🔥 ${S.combo}er-Serie` : `Punkte ${S.score}`]]);
+  }
+  function gameOver() {
+    S.run = false; S.over = true; st.banner.hidden = true;
+    const rec = saveBest('run', S.score); addXP(S.coins);
+    if (S.correct >= 10) confetti();
+    st.showOv(endCard('Markt-Run', S.score, rec, `${S.correct} Tore richtig · ${S.coins} Münzen · ${Math.round(S.dist)} m gelaufen`, S.missed));
+  }
+  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); } });
+  reset(); S.run = false;
+  st.showOv(startCard('Markt-Run', 'Drei Spuren, drei Antworten. Lauf durch das richtige Tor. Falsches Tor oder Hürde kostet ein Herz. Je länger du läufst, desto schneller wird es.', ['◀ ▶ / A D: Spur', '▲ / W / Leertaste: Sprung', 'Handy: wischen oder tippen']));
+  loop((dt) => { if (S.run) update(dt); draw(); if (S.run) banner(); });
+}
+
+/* ═════════════ 2 · Begriffs-Regen ═════════════ */
+function gameRain(g) {
+  const st = stage(g, 'Oben steht die Kategorie. Fang nur passende Begriffe mit dem Korb. Einen falschen zu fangen kostet ein Herz. Steuern mit Maus oder Finger (über die Fläche ziehen) oder ◀ ▶.', 0.68, [['L', '◀'], ['R', '▶']], true);
+  const { ctx } = st; let S = null; const ROUND = 22;
+  function reset() { S = { run: true, t: 0, x: st.dim.w / 2, tx: null, vx: 0, items: [], hearts: 3, score: 0, combo: 0, caught: 0, cats: shuffle(CATS).slice(0, 5), ci: 0, rt: 0, spawnT: .6, floaters: [], missed: [], last: '' }; }
+  const held = { L: false, R: false };
+  st.onPad = (k, d) => { held[k] = d; if (S) S.tx = null; };
+  listen(window, 'keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'a') { held.L = true; if (S) S.tx = null; e.preventDefault(); } if (e.key === 'ArrowRight' || e.key === 'd') { held.R = true; if (S) S.tx = null; e.preventDefault(); } });
+  listen(window, 'keyup', e => { if (e.key === 'ArrowLeft' || e.key === 'a') held.L = false; if (e.key === 'ArrowRight' || e.key === 'd') held.R = false; });
+  const pt = e => { if (!S) return; const r = st.cv.getBoundingClientRect(); S.tx = e.clientX - r.left; };
+  listen(st.cv, 'pointermove', pt); listen(st.cv, 'pointerdown', pt);
+  function update(dt) {
+    const W = st.dim.w, H = st.dim.h, cat = S.cats[S.ci];
+    S.t += dt; S.rt += dt;
+    if (S.rt > ROUND) { S.ci++; S.rt = 0; S.items = []; if (S.ci >= S.cats.length) return end(); S.floaters.push({ x: W / 2, y: H / 2, txt: 'Neue Kategorie!', col: COL.lime, life: 1.6 }); }
+    const bw = Math.min(150, W * .3);
+    if (held.L) S.x -= 560 * dt; if (held.R) S.x += 560 * dt;
+    if (S.tx != null) S.x += (S.tx - S.x) * Math.min(1, dt * 16);
+    S.x = Math.max(bw / 2 + 6, Math.min(W - bw / 2 - 6, S.x));
+    S.spawnT -= dt;
+    if (S.spawnT <= 0) {
+      S.spawnT = Math.max(.55, 1.15 - S.t * .005);
+      const good = Math.random() < .58; let txt = pick(good ? cat.good : cat.bad); if (txt === S.last) txt = pick(good ? cat.good : cat.bad); S.last = txt;
+      ctx.font = `600 15px ${FONT}`; const w = ctx.measureText(txt).width + 26;
+      let x = rnd(w / 2 + 8, W - w / 2 - 8); for (let k = 0; k < 8 && S.items.some(o => o.y < 190 && Math.abs(o.x - x) < (o.w + w) / 2 + 6); k++) x = rnd(w / 2 + 8, W - w / 2 - 8);
+      S.items.push({ x, y: 120, txt, good, w, vy: (62 + S.t * 1.1 + rnd(0, 26)) * (H / 600) });
+    }
+    const top = H - 66;
+    for (const it of S.items) {
+      it.y += it.vy * dt;
+      if (!it.done && it.y + 15 >= top && it.y - 15 <= top + 16 && Math.abs(it.x - S.x) < bw / 2 + it.w / 2 - 12) {
+        it.done = true;
+        if (it.good) { S.combo++; S.caught++; S.score += 10 + 2 * Math.min(S.combo, 10); addXP(2); S.floaters.push({ x: it.x, y: top - 10, txt: `+${10 + 2 * Math.min(S.combo, 10)}`, col: COL.mint, life: .8 }); }
+        else { S.combo = 0; S.hearts--; S.floaters.push({ x: it.x, y: top - 10, txt: `✗ ${it.txt}`, col: COL.bad, life: 1.4 }); S.missed.push({ q: `„${it.txt}“ gehört nicht zu ${cat.name}.`, a: cat.good.slice(0, 3).join(', ') + ' …' }); }
+      }
+      if (!it.done && it.y > H + 20) { it.done = true; if (it.good) S.combo = 0; }
+    }
+    S.items = S.items.filter(i => !i.done);
+    S.floaters.forEach(f => { f.y -= 40 * dt; f.life -= dt; }); S.floaters = S.floaters.filter(f => f.life > 0);
+    if (S.hearts <= 0) end();
+  }
+  function draw() {
+    const W = st.dim.w, H = st.dim.h, c = ctx;
+    const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#07070d'); gr.addColorStop(1, '#0b1224'); c.fillStyle = gr; c.fillRect(0, 0, W, H);
+    c.strokeStyle = 'rgba(61,139,255,.07)'; c.lineWidth = 1; for (let x = 0; x < W; x += 40) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+    if (!S) return;
+    for (const it of S.items) { c.font = `600 15px ${FONT}`; c.fillStyle = '#1b1b27'; c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 1.2; rr(c, it.x - it.w / 2, it.y - 16, it.w, 32, 16); c.fill(); c.stroke(); c.fillStyle = COL.fg; c.textAlign = 'center'; c.fillText(it.txt, it.x, it.y + 5); }
+    const bw = Math.min(150, W * .3), top = H - 66, x = S.x;
+    c.fillStyle = 'rgba(61,139,255,.15)'; c.beginPath(); c.ellipse(x, H - 18, bw * .55, 8, 0, 0, 7); c.fill();
+    c.fillStyle = '#16213a'; c.strokeStyle = COL.blue; c.lineWidth = 2.5; c.shadowColor = COL.blue; c.shadowBlur = 16;
+    c.beginPath(); c.moveTo(x - bw / 2, top); c.lineTo(x + bw / 2, top); c.lineTo(x + bw / 2 - 14, top + 38); c.lineTo(x - bw / 2 + 14, top + 38); c.closePath(); c.fill(); c.stroke(); c.shadowBlur = 0;
+    c.strokeStyle = 'rgba(61,139,255,.5)'; c.lineWidth = 1.5; for (let i = 1; i < 5; i++) { const xx = x - bw / 2 + i * bw / 5; c.beginPath(); c.moveTo(xx, top + 4); c.lineTo(xx + (xx < x ? 4 : -4), top + 34); c.stroke(); }
+    c.fillStyle = '#d8dbe6'; c.beginPath(); c.arc(x - bw / 2 + 22, top + 46, 6, 0, 7); c.arc(x + bw / 2 - 22, top + 46, 6, 0, 7); c.fill();
+    S.floaters.forEach(f => { c.globalAlpha = Math.min(1, f.life * 1.5); c.fillStyle = f.col; c.font = `700 16px ${FONT}`; c.textAlign = 'center'; c.fillText(f.txt, f.x, f.y); }); c.globalAlpha = 1;
+    const cat = S.cats[Math.min(S.ci, S.cats.length - 1)];
+    const html = `<div class="tag">Runde ${Math.min(S.ci + 1, S.cats.length)}/${S.cats.length} · Fang nur</div><div class="bq">${cat.name}</div><div class="prog"><i style="width:${(1 - S.rt / ROUND) * 100}%"></i></div>`;
+    st.banner.innerHTML = html; st.banner.className = 'banner'; st.banner.hidden = !S.run;
+    st.setHud([['hearts', hearts(S.hearts)], ['', `Gefangen ${S.caught}`], ['', S.combo >= 3 ? `🔥 ${S.combo}` : `Punkte ${S.score}`]]);
+  }
+  function end() {
+    S.run = false; st.banner.hidden = true; const rec = saveBest('regen', S.score); if (S.hearts > 0) confetti();
+    st.showOv(endCard('Begriffs-Regen', S.score, rec, S.hearts > 0 ? `Alle ${S.cats.length} Kategorien geschafft · ${S.caught} richtig gefangen` : `${S.caught} richtig gefangen · Kategorie ${S.ci + 1} von ${S.cats.length} erreicht`, S.missed));
+  }
+  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); } });
+  st.showOv(startCard('Begriffs-Regen', '5 Kategorien à 22 Sekunden. Fang passende Begriffe und lass die falschen fallen. Serien bringen Bonuspunkte.', ['Maus/Finger: Korb ziehen', '◀ ▶ / A D']));
+  loop((dt) => { if (S?.run) update(dt); draw(); });
+}
+
+/* ═════════════ 3 · Antwort-Blaster ═════════════ */
+function gameBlaster(g) {
+  const st = stage(g, 'Oben steht die Frage. Tippe auf den richtigen Meteor (oder steuere mit ◀ ▶ und feuere mit der Leertaste). Ein falscher Treffer oder ein Einschlag des richtigen Meteors kostet ein Schild.', 0.72, [['L', '◀'], ['F', 'Feuer'], ['R', '▶']], true);
+  const { ctx } = st; let S = null; const N = 15;
+  const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: rnd(.3, 1) }));
+  function reset() { S = { run: true, t: 0, x: st.dim.w / 2, tx: null, queued: false, cd: 0, bullets: [], rocks: [], parts: [], qs: shuffle(QS).slice(0, N), qi: -1, hearts: 3, score: 0, right: 0, wait: .3, fb: null, missed: [], qStart: 0 }; }
+  const held = { L: false, R: false };
+  function fire() { if (S?.run && S.cd <= 0) { S.bullets.push({ x: S.x, y: st.dim.h - 58 }); S.cd = .22; } }
+  st.onPad = (k, d) => { if (k === 'F') { if (d) fire(); return; } held[k] = d; if (S) S.tx = null; };
+  listen(window, 'keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'a') { held.L = true; if (S) S.tx = null; e.preventDefault(); } if (e.key === 'ArrowRight' || e.key === 'd') { held.R = true; if (S) S.tx = null; e.preventDefault(); } if (e.key === ' ' || e.key === 'ArrowUp') { fire(); e.preventDefault(); } });
+  listen(window, 'keyup', e => { if (e.key === 'ArrowLeft' || e.key === 'a') held.L = false; if (e.key === 'ArrowRight' || e.key === 'd') held.R = false; });
+  listen(st.cv, 'pointerdown', e => { if (!S?.run) return; const r = st.cv.getBoundingClientRect(); S.tx = e.clientX - r.left; S.queued = true; });
+  function nextQ() {
+    S.qi++; S.fb = null; if (S.qi >= S.qs.length) return end();
+    const q = S.qs[S.qi], W = st.dim.w; const xs = shuffle([.2, .5, .8]);
+    ctx.font = `650 14px ${FONT}`;
+    S.rocks = q.o.map((txt, i) => { const lines = wrapText(ctx, txt, 104); const tw = Math.max(...lines.map(l => ctx.measureText(l).width)); const r = Math.max(40, Math.min(66, tw / 2 + 16)); return { x: W * xs[i], baseX: W * xs[i], y: 104 + r + rnd(0, 34), r, txt, lines, ok: i === q.a, ph: rnd(0, 6), vy: (16 + S.qi * 2.4) * (st.dim.h / 600) }; });
+    S.qStart = S.t;
+  }
+  function burst(x, y, col, n = 30) { for (let i = 0; i < n; i++) { const a = rnd(0, Math.PI * 2), v = rnd(60, 320); S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rnd(.4, .9), col }); } }
+  function update(dt) {
+    const W = st.dim.w, H = st.dim.h; S.t += dt; S.cd -= dt;
+    if (S.wait > 0) { S.wait -= dt; if (S.wait <= 0) nextQ(); }
+    if (held.L) S.x -= 480 * dt; if (held.R) S.x += 480 * dt;
+    if (S.tx != null) { S.x += Math.sign(S.tx - S.x) * Math.min(Math.abs(S.tx - S.x), 900 * dt); if (Math.abs(S.tx - S.x) < 3) { S.tx = null; if (S.queued) { S.queued = false; S.cd = 0; fire(); } } }
+    S.x = Math.max(24, Math.min(W - 24, S.x));
+    S.bullets.forEach(b => b.y -= 950 * dt); S.bullets = S.bullets.filter(b => b.y > -20 && !b.dead);
+    for (const r of S.rocks) {
+      r.y += r.vy * dt; r.x = r.baseX + Math.sin(S.t * 1.2 + r.ph) * 18;
+      for (const b of S.bullets) if (!b.dead && !r.dead && Math.hypot(b.x - r.x, b.y - r.y) < r.r) {
+        b.dead = true; r.dead = true;
+        const q = S.qs[S.qi];
+        if (r.ok) { const bonus = Math.round(Math.max(0, 1 - (S.t - S.qStart) / 10) * 100); S.score += 100 + bonus; S.right++; addXP(10); burst(r.x, r.y, COL.mint, 40); S.rocks.forEach(o => { if (!o.dead) { o.dead = true; burst(o.x, o.y, 'rgba(255,255,255,.5)', 10); } }); S.fb = { ok: true, txt: `Treffer! ${q.o[q.a]}${bonus > 50 ? ' · Speed-Bonus' : ''}` }; S.wait = 1.1; if (S.right % 5 === 0) confetti(60); }
+        else { S.hearts--; burst(r.x, r.y, COL.bad, 26); S.fb = { ok: false, txt: `${r.txt} ist falsch!` }; S.missed.push({ q: q.q, a: q.o[q.a] }); }
+      }
+      if (!r.dead && r.ok && r.y > H - 80) { r.dead = true; S.hearts--; burst(r.x, H - 80, COL.bad, 30); const q = S.qs[S.qi]; S.fb = { ok: false, txt: `Einschlag! Richtig war: ${q.o[q.a]}` }; S.missed.push({ q: q.q, a: q.o[q.a] }); S.rocks.forEach(o => o.dead = true); S.wait = 1.6; }
+    }
+    S.rocks = S.rocks.filter(r => !r.dead);
+    S.parts.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .96; p.vy *= .96; p.life -= dt; }); S.parts = S.parts.filter(p => p.life > 0);
+    if (S.hearts <= 0) end();
+  }
+  function draw() {
+    const W = st.dim.w, H = st.dim.h, c = ctx;
+    c.fillStyle = '#05050a'; c.fillRect(0, 0, W, H);
+    const rg = c.createRadialGradient(W * .5, H * 1.1, 0, W * .5, H * 1.1, H); rg.addColorStop(0, 'rgba(255,77,141,.25)'); rg.addColorStop(1, 'rgba(255,77,141,0)'); c.fillStyle = rg; c.fillRect(0, 0, W, H);
+    const tt = S ? S.t : performance.now() / 1000;
+    stars.forEach(s => { const y = (s.y * H + tt * 40 * s.z) % H; c.fillStyle = `rgba(255,255,255,${s.z * .6})`; c.fillRect(s.x * W, y, 1.6 * s.z, 1.6 * s.z); });
+    if (!S) return;
+    c.strokeStyle = 'rgba(255,92,108,.25)'; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(0, H - 80); c.lineTo(W, H - 80); c.stroke(); c.setLineDash([]);
+    for (const r of S.rocks) {
+      c.save(); c.translate(r.x, r.y);
+      c.fillStyle = '#211a27'; c.strokeStyle = COL.pink; c.lineWidth = 2; c.shadowColor = COL.pink; c.shadowBlur = 16;
+      c.beginPath(); for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI * 2, rr2 = r.r * (1 + .07 * Math.sin(i * 2.7 + r.ph)); c.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } c.closePath(); c.fill(); c.stroke(); c.shadowBlur = 0;
+      c.fillStyle = COL.fg; c.font = `650 14px ${FONT}`; c.textAlign = 'center'; r.lines.slice(0, 3).forEach((ln, i) => c.fillText(ln, 0, (i - (Math.min(3, r.lines.length) - 1) / 2) * 17 + 5));
+      c.restore();
+    }
+    c.fillStyle = COL.lime; c.shadowColor = COL.lime; c.shadowBlur = 10; S.bullets.forEach(b => c.fillRect(b.x - 2, b.y - 12, 4, 14)); c.shadowBlur = 0;
+    const sx = S.x, sy = H - 44;
+    c.fillStyle = COL.pink; c.shadowColor = COL.pink; c.shadowBlur = 18; c.beginPath(); c.moveTo(sx, sy - 22); c.lineTo(sx - 20, sy + 14); c.lineTo(sx, sy + 6); c.lineTo(sx + 20, sy + 14); c.closePath(); c.fill(); c.shadowBlur = 0;
+    c.fillStyle = COL.yellow; c.beginPath(); c.moveTo(sx - 6, sy + 10); c.lineTo(sx, sy + 20 + Math.sin(S.t * 40) * 4); c.lineTo(sx + 6, sy + 10); c.fill();
+    S.parts.forEach(p => { c.globalAlpha = Math.max(0, p.life * 1.2); c.fillStyle = p.col; c.fillRect(p.x - 2, p.y - 2, 4, 4); }); c.globalAlpha = 1;
+    const q = S.qs[Math.min(S.qs.length - 1, Math.max(0, S.qi))];
+    let html, cls = 'banner';
+    if (S.fb) { html = `<div class="bq">${S.fb.txt}</div>`; cls += S.fb.ok ? ' ok' : ' bad'; }
+    else html = `<div class="tag">Frage ${S.qi + 1}/${S.qs.length}</div><div class="bq">${q.q}</div>`;
+    if (st.banner._h !== html) { st.banner.innerHTML = html; st.banner._h = html; } st.banner.className = cls; st.banner.hidden = !S.run || S.qi < 0;
+    st.setHud([['hearts', hearts(S.hearts)], ['', `Treffer ${S.right}`], ['', `Punkte ${S.score}`]]);
+  }
+  function end() {
+    if (!S.run) return; S.run = false; st.banner.hidden = true; const rec = saveBest('blaster', S.score); if (S.right >= 12) confetti();
+    st.showOv(endCard('Antwort-Blaster', S.score, rec, `${S.right} von ${Math.min(S.qi + 1, S.qs.length)} Fragen abgeschossen`, S.missed));
+  }
+  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); } });
+  st.showOv(startCard('Antwort-Blaster', '15 Fragen, 3 Schilde. Je schneller du den richtigen Meteor triffst, desto mehr Bonuspunkte gibt es. Die Meteore werden mit jeder Frage schneller.', ['Tippen/Klicken: zielen + feuern', '◀ ▶ + Leertaste']));
+  loop((dt) => { if (S?.run) update(dt); draw(); });
+}
+
+/* ═════════════ 4 · Gleichgewichts-Jagd ═════════════ */
+function gameHunt(g) {
+  const st = stage(g, 'Ein Ereignis verschiebt Angebot (orange) oder Nachfrage (blau). Steuer den Preis (gelbe Linie) ins neue Gleichgewicht: ▲ ▼ halten, Pfeiltasten oder auf dem Diagramm ziehen. Ist deine erste Bewegung schon richtig, gibt es einen Bonus.', 0.66, [['U', '▲ Preis rauf'], ['D', '▼ Preis runter']], false);
+  const { ctx } = st; let S = null; const ROUNDS = 8, TOL = .05, LIMIT = 12;
+  const held = { U: false, D: false };
+  st.onPad = (k, d) => { held[k] = d; };
+  listen(window, 'keydown', e => { if (e.key === 'ArrowUp' || e.key === 'w') { held.U = true; e.preventDefault(); } if (e.key === 'ArrowDown' || e.key === 's') { held.D = true; e.preventDefault(); } });
+  listen(window, 'keyup', e => { if (e.key === 'ArrowUp' || e.key === 'w') held.U = false; if (e.key === 'ArrowDown' || e.key === 's') held.D = false; });
+  let drag = false;
+  const geo = () => { const W = st.dim.w, H = st.dim.h; const L = 54, R = W - 20, T = 130, B = H - 66; return { W, H, L, R, T, B, X: q => L + q / 900 * (R - L), Y: p => B - p / 4 * (B - T), P: y => (B - y) / (B - T) * 4 }; };
+  const setFromPointer = e => { if (!S?.run || S.phase !== 'chase') return; const r = st.cv.getBoundingClientRect(); const G = geo(); S.p = Math.max(.25, Math.min(3.75, G.P(e.clientY - r.top))); markMove(); };
+  listen(st.cv, 'pointerdown', e => { drag = true; try { st.cv.setPointerCapture(e.pointerId); } catch {} setFromPointer(e); });
+  listen(st.cv, 'pointermove', e => { if (drag) setFromPointer(e); });
+  listen(st.cv, 'pointerup', () => { drag = false; });
+  const eq = (aN, cA) => (aN - cA) / 400;
+  function reset() { S = { run: true, aN: 700, cA: -100, from: null, to: null, p: 2, phase: 'pause', pt: 1, round: 0, ev: null, t0: 0, p0: 2, first: 0, hold: 0, score: 0, hits: 0, log: [], missed: [], fb: null, used: [] }; }
+  function markMove() { if (S.first === 0 && Math.abs(S.p - S.p0) > .04) S.first = Math.sign(S.p - S.p0); }
+  function nextEvent() {
+    S.round++; if (S.round > ROUNDS) return end();
+    let ev, aN, cA, tries = 0;
+    do { ev = pick(EVENTS.filter(x => !S.used.includes(x.t))); aN = S.aN + (ev.k === 'N' ? ev.d * 150 : 0); cA = S.cA + (ev.k === 'A' ? ev.d * 150 : 0); tries++; } while ((aN < 400 || aN > 1000 || cA < -400 || cA > 200 || eq(aN, cA) < .6 || eq(aN, cA) > 3.4) && tries < 50);
+    S.used.push(ev.t); if (S.used.length > 8) S.used.shift();
+    S.ev = ev; S.from = { aN: S.aN, cA: S.cA }; S.to = { aN, cA }; S.phase = 'shift'; S.pt = 0; S.p0 = S.p; S.first = 0; S.hold = 0; S.fb = null;
+  }
+  function update(dt) {
+    if (S.phase === 'pause') { S.pt -= dt; if (S.pt <= 0) nextEvent(); return; }
+    if (S.phase === 'shift') { S.pt = Math.min(1, S.pt + dt / .9); const e = 1 - Math.pow(1 - S.pt, 3); S.aN = S.from.aN + (S.to.aN - S.from.aN) * e; S.cA = S.from.cA + (S.to.cA - S.from.cA) * e; if (S.pt >= 1) { S.phase = 'chase'; S.t0 = 0; } }
+    if (S.phase === 'chase' || S.phase === 'shift') {
+      if (held.U) S.p += 1.25 * dt; if (held.D) S.p -= 1.25 * dt; S.p = Math.max(.25, Math.min(3.75, S.p)); if (held.U || held.D) markMove();
+    }
+    if (S.phase === 'chase') {
+      S.t0 += dt; const pe = eq(S.aN, S.cA);
+      if (Math.abs(S.p - pe) < TOL) S.hold += dt; else S.hold = 0;
+      const ev = S.ev, expDir = ev.k === 'N' ? ev.d : -ev.d;
+      const name = `${ev.k === 'A' ? 'Angebot' : 'Nachfrage'} nach ${ev.d > 0 ? 'rechts' : 'links'}: Preis ${expDir > 0 ? '↑' : '↓'}, Menge ${ev.d > 0 ? '↑' : '↓'}`;
+      if (S.hold > .35) {
+        const bonus = S.first === expDir ? 25 : 0; const pts = Math.round(Math.max(20, 100 - S.t0 * 8)) + bonus;
+        S.score += pts; S.hits++; addXP(8); S.p = pe; S.fb = { ok: true, txt: `+${pts}${bonus ? ' (inkl. Richtungs-Bonus)' : ''} · ${name}` }; S.phase = 'pause'; S.pt = 2.2; if (S.hits % 4 === 0) confetti(50);
+      } else if (S.t0 > LIMIT) {
+        S.fb = { ok: false, txt: `Zeit um. ${name}` }; S.missed.push({ q: ev.t, a: name }); S.p = pe; S.phase = 'pause'; S.pt = 2.6;
+      }
+    }
+  }
+  function draw() {
+    const G = geo(), { W, H, L, R, T, B, X, Y } = G, c = ctx;
+    c.fillStyle = '#06080a'; c.fillRect(0, 0, W, H);
+    const rg = c.createRadialGradient(W * .7, T, 0, W * .7, T, W * .7); rg.addColorStop(0, 'rgba(46,230,166,.14)'); rg.addColorStop(1, 'rgba(46,230,166,0)'); c.fillStyle = rg; c.fillRect(0, 0, W, H);
+    c.font = `500 11px 'Geist Mono', monospace`; c.textAlign = 'right';
+    for (let p = .5; p <= 3.5; p += .5) { c.strokeStyle = 'rgba(255,255,255,.06)'; c.beginPath(); c.moveTo(L, Y(p)); c.lineTo(R, Y(p)); c.stroke(); c.fillStyle = 'rgba(255,255,255,.45)'; c.fillText(p.toFixed(2).replace('.', ',') + ' €', L - 6, Y(p) + 4); }
+    c.textAlign = 'center'; for (let q = 200; q <= 800; q += 200) { c.fillStyle = 'rgba(255,255,255,.45)'; c.fillText(q, X(q), B + 18); }
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(L, T - 14); c.lineTo(L, B); c.lineTo(R, B); c.stroke();
+    c.fillStyle = COL.fg; c.font = `600 12px ${FONT}`; c.textAlign = 'left'; c.fillText('Preis', L + 6, T - 4); c.textAlign = 'right'; c.fillText('Menge', R, B - 8);
+    const s = S || { aN: 700, cA: -100, p: 2, from: null, phase: 'pause' };
+    const lineN = (aN, col, w, dash) => { const p1 = Math.min(4, aN / 200), q0 = aN - 200 * 0; c.strokeStyle = col; c.lineWidth = w; c.setLineDash(dash || []); c.beginPath(); c.moveTo(X(Math.min(900, q0)), Y(Math.max(0, (aN - 900) / 200))); c.lineTo(X(Math.max(0, aN - 800)), Y(p1)); c.stroke(); c.setLineDash([]); };
+    const lineA = (cA, col, w, dash) => { const pStart = Math.max(0, -cA / 200), pEnd = Math.min(4, (900 - cA) / 200); c.strokeStyle = col; c.lineWidth = w; c.setLineDash(dash || []); c.beginPath(); c.moveTo(X(200 * pStart + cA), Y(pStart)); c.lineTo(X(200 * pEnd + cA), Y(pEnd)); c.stroke(); c.setLineDash([]); };
+    if (s.from && s.phase !== 'pause') { lineN(s.from.aN, 'rgba(61,139,255,.3)', 2, [6, 6]); lineA(s.from.cA, 'rgba(255,138,61,.3)', 2, [6, 6]); }
+    c.shadowBlur = 12; c.shadowColor = COL.blue; lineN(s.aN, COL.blue, 4); c.shadowColor = COL.orange; lineA(s.cA, COL.orange, 4); c.shadowBlur = 0;
+    c.font = `700 14px ${FONT}`; c.fillStyle = COL.blue; c.textAlign = 'left'; c.fillText('N', X(Math.max(0, s.aN - 790)) + 6, Y(Math.min(3.95, s.aN / 200)) + 14);
+    c.fillStyle = COL.orange; const pe2 = Math.min(3.9, (880 - s.cA) / 200); c.fillText('A', X(Math.min(880, 200 * pe2 + s.cA)) - 16, Y(pe2) + 4);
+    const qN = s.aN - 200 * s.p, qA = 200 * s.p + s.cA, y = Y(s.p), diff = Math.round(qN - qA);
+    if (Math.abs(diff) > 4) { c.globalAlpha = .55; c.strokeStyle = diff > 0 ? COL.blue : COL.orange; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(X(Math.max(0, Math.min(qN, qA))), y); c.lineTo(X(Math.min(900, Math.max(qN, qA))), y); c.stroke(); c.globalAlpha = 1; c.lineCap = 'butt'; }
+    c.strokeStyle = COL.yellow; c.lineWidth = 2.5; c.setLineDash([9, 6]); c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke(); c.setLineDash([]);
+    c.fillStyle = COL.yellow; rr(c, L + 6, y - 26, 84, 20, 6); c.fill(); c.fillStyle = '#050507'; c.font = `700 12px ${FONT}`; c.textAlign = 'center'; c.fillText(s.p.toFixed(2).replace('.', ',') + ' €', L + 48, y - 12);
+    c.font = `600 12.5px ${FONT}`; c.textAlign = 'center';
+    if (Math.abs(diff) > 4) { const mid = X(Math.max(0, Math.min(900, (qN + qA) / 2))); c.fillStyle = diff > 0 ? COL.blue : COL.orange; c.fillText(`${diff > 0 ? 'Nachfrageüberhang' : 'Angebotsüberhang'} ${Math.abs(diff)} · Markt drückt Preis ${diff > 0 ? '↑' : '↓'}`, Math.min(R - 120, Math.max(L + 130, mid)), y + (y > (T + B) / 2 ? -16 : 26)); }
+    else { c.fillStyle = COL.mint; c.fillText('Gleichgewicht: Markt geräumt', Math.min(R - 110, X(Math.max(0, qN)) + 10), y - 16); c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(X(qN), y, 9, 0, 7); c.stroke(); }
+    if (!S) return;
+    let html, cls = 'banner';
+    if (S.fb) { html = `<div class="bq">${S.fb.txt}</div>`; cls += S.fb.ok ? ' ok' : ' bad'; }
+    else if (S.ev) html = `<div class="tag">Ereignis ${S.round}/${ROUNDS}</div><div class="bq">${S.ev.t}</div>${S.phase === 'chase' ? `<div class="prog"><i style="width:${Math.max(0, 1 - S.t0 / LIMIT) * 100}%"></i></div>` : ''}`;
+    else html = `<div class="bq">Gleich geht’s los …</div>`;
+    if (st.banner._h !== html) { st.banner.innerHTML = html; st.banner._h = html; } st.banner.className = cls; st.banner.hidden = !S.run;
+    st.setHud([['', `Punkte ${S.score}`], ['', `Geschafft ${S.hits}/${ROUNDS}`]]);
+  }
+  function end() {
+    S.run = false; st.banner.hidden = true; const rec = saveBest('jagd', S.score); if (S.hits >= 6) confetti();
+    st.showOv(endCard('Gleichgewichts-Jagd', S.score, rec, `${S.hits} von ${ROUNDS} Gleichgewichten getroffen. Merke: Angebot rechts → Preis ↓ Menge ↑ · Nachfrage rechts → Preis ↑ Menge ↑`, S.missed));
+  }
+  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); } });
+  st.showOv(startCard('Gleichgewichts-Jagd', '8 Marktereignisse. Überleg zuerst, ob der Preis steigen oder fallen muss, dann jag ihn ins Gleichgewicht, bevor die Zeit abläuft.', ['▲ ▼ halten', 'Pfeiltasten / W S', 'auf dem Diagramm ziehen']));
+  loop((dt) => { if (S?.run) update(dt); draw(); });
+}
+
+route();
+</script>
