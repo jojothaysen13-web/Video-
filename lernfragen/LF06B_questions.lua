@@ -182,3 +182,39 @@ local Questions = {
         explanation = "Ein hoher Preis signalisiert, dass ein Gut knapp und begehrt ist."
     }
 }
+
+-- Checkpoints: Reihenfolge = Reihenfolge der Fragen (Checkpoint 1 = Frage 1 usw.)
+-- Route: Innenstadt Los Santos -> Sueden/Hafen -> Flughafen -> Strand -> Westen/Hills -> Vinewood -> Osten -> Blaine County -> Paleto Bay -> Finale auf dem Mount Chiliad
+-- Hinweis: Werte sind Naeherungen. Liegt ein Marker in der Luft oder im Boden, z-Wert im Spiel per Trainer pruefen und anpassen.
+local Checkpoints = {
+    {x = 215.0, y = -810.0, z = 30.7},      -- 1  Legion Square
+    {x = 425.1, y = -979.5, z = 30.7},      -- 2  Mission Row Police Station
+    {x = 357.4, y = -593.1, z = 28.8},      -- 3  Pillbox Hill Medical Center
+    {x = -66.3, y = -802.4, z = 44.2},      -- 4  Maze Bank Tower (Eingang)
+    {x = -14.3, y = -1441.0, z = 31.1},     -- 5  Forum Drive (Franklins Tante)
+    {x = 105.0, y = -1940.0, z = 20.8},     -- 6  Grove Street
+    {x = -255.0, y = -2026.0, z = 30.1},    -- 7  Maze Bank Arena
+    {x = 140.0, y = -3100.0, z = 5.9},      -- 8  Hafen (Elysian Island)
+    {x = -1037.5, y = -2737.8, z = 20.1},   -- 9  Flughafen LSIA
+    {x = -1204.0, y = -1561.0, z = 4.6},    -- 10 Vespucci Beach
+    {x = -1850.0, y = -1231.0, z = 13.0},   -- 11 Del Perro Pier
+    {x = -1083.0, y = -245.0, z = 37.8},    -- 12 Lifeinvader
+    {x = -365.4, y = -131.8, z = 37.9},     -- 13 LS Customs Burton
+    {x = -1366.0, y = 56.7, z = 54.1},      -- 14 Los Santos Golf Club
+    {x = -813.6, y = 179.5, z = 72.2},      -- 15 Michaels Haus (Rockford Hills)
+    {x = -2243.8, y = 264.9, z = 174.6},    -- 16 Kortz Center
+    {x = -438.8, y = 1076.0, z = 352.4},    -- 17 Galileo Observatorium
+    {x = 7.9, y = 548.1, z = 175.5},        -- 18 Franklins Haus (Vinewood Hills)
+    {x = 229.3, y = 214.8, z = 105.5},      -- 19 Pacific Standard Bank
+    {x = 711.4, y = 1198.1, z = 348.5},     -- 20 Vinewood Schild
+    {x = 924.0, y = 46.0, z = 81.1},        -- 21 Diamond Casino
+    {x = 1080.0, y = -690.0, z = 57.6},     -- 22 Mirror Park
+    {x = 1747.0, y = 3273.7, z = 41.1},     -- 23 Sandy Shores Flugplatz
+    {x = 1839.6, y = 3672.9, z = 34.3},     -- 24 Sandy Shores Medical Center
+    {x = 1853.2, y = 3686.6, z = 34.3},     -- 25 Sandy Shores Sheriff
+    {x = 1985.5, y = 3812.2, z = 32.2},     -- 26 Trevors Wohnwagen
+    {x = 1698.0, y = 4924.0, z = 42.1},     -- 27 Grapeseed
+    {x = -448.0, y = 6008.0, z = 31.7},     -- 28 Paleto Bay Sheriff
+    {x = -275.5, y = 6635.8, z = 7.4},      -- 29 Paleto Bay Kueste
+    {x = 501.8, y = 5604.5, z = 797.9}      -- 30 Mount Chiliad Gipfel (Finale)
+}
