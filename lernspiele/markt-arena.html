@@ -1,0 +1,626 @@
+<title>Markt-Arena</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500&display=swap">
+<style>
+/* Layout: eine Arena-Startseite mit Spielkacheln; jedes Spiel ist eine eigene Ansicht (Hash-Route) mit Kopfzeile, Spielfläche und Feedback.
+   Bewusst nur dunkel – identisch zum Erklärvideo. */
+:root {
+  color-scheme: dark;
+  --bg: #050507; --surface: #111117; --surface-2: #17171f; --line: rgba(255,255,255,.09); --line-2: rgba(255,255,255,.16);
+  --fg: #F5F5F7; --mut: rgba(245,245,247,.6); --dim: rgba(245,245,247,.38);
+  --markt: #8B6CFF; --n: #3D8BFF; --a: #FF8A3D; --gg: #2EE6A6; --formen: #FF4D8D; --staat: #FFD23D; --funk: #4DE1FF; --quiz: #C6FF3D;
+  --ok: #2EE6A6; --bad: #FF5C6C;
+  --font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --r: 20px;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; min-height: 100%; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.glow i { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; filter: blur(90px); opacity: .22; background: var(--acc, var(--markt)); top: -35vmax; right: -25vmax; transition: background .6s; }
+.glow i + i { background: var(--acc2, var(--n)); opacity: .12; top: auto; right: auto; bottom: -40vmax; left: -30vmax; }
+.wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding-block: 0 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--quiz); outline-offset: 3px; }
+
+/* Kopfzeile */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; background: linear-gradient(var(--bg) 70%, transparent); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; background: none; border: 0; padding: 0; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--quiz); box-shadow: 0 0 14px var(--quiz); }
+.xp { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(255,255,255,.04); }
+.xp b { color: var(--quiz); font-weight: 500; }
+
+/* Startseite */
+.hero { padding: 28px 0 22px; display: grid; gap: 14px; }
+.kicker { display: inline-flex; align-self: start; justify-self: start; align-items: center; gap: 9px; padding: 6px 13px 6px 11px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(255,255,255,.04); font-size: 12px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.8); }
+.kicker::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--acc, var(--quiz)); box-shadow: 0 0 10px var(--acc, var(--quiz)); }
+h1 { font-size: clamp(38px, 8vw, 72px); line-height: .95; letter-spacing: -.055em; margin: 0; font-weight: 700; text-wrap: balance; }
+h1 span { color: var(--quiz); }
+.lead { color: var(--mut); font-size: 17px; max-width: 58ch; margin: 0; }
+.meter { display: grid; gap: 8px; margin-top: 6px; max-width: 520px; }
+.meter-top { display: flex; justify-content: space-between; font-size: 13px; color: var(--mut); }
+.meter-top b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.track { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.track i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--markt), var(--n), var(--gg), var(--quiz)); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
+.tile { --c: var(--quiz); position: relative; text-align: left; display: grid; gap: 10px; align-content: start; padding: 20px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); transition: transform .2s, border-color .2s; overflow: hidden; min-width: 0; }
+.tile::after { content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%; background: var(--c); filter: blur(60px); opacity: .18; top: -70px; right: -60px; pointer-events: none; }
+.tile:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--c) 60%, transparent); }
+.tile .ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.02)); border: 1px solid var(--line-2); box-shadow: 0 0 30px -8px var(--c); }
+.tile .ico svg { width: 24px; height: 24px; stroke: var(--c); }
+.tile h3 { margin: 4px 0 0; font-size: 21px; letter-spacing: -.03em; }
+.tile p { margin: 0; color: var(--mut); font-size: 14.5px; }
+.tile .meta { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 12px; color: var(--dim); margin-top: 4px; }
+.tile .meta b { color: var(--c); font-weight: 500; }
+.topics { display: flex; flex-wrap: wrap; gap: 6px; }
+.topics span { font-size: 11.5px; padding: 3px 9px; border-radius: 99px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.75); }
+
+/* Spielansicht */
+.view-head { display: grid; gap: 10px; padding: 18px 0 16px; }
+.back { justify-self: start; display: inline-flex; gap: 6px; align-items: center; border: 0; background: none; color: var(--mut); padding: 4px 0; font-size: 14px; }
+.back:hover { color: var(--fg); }
+h2 { margin: 0; font-size: clamp(28px, 5vw, 44px); letter-spacing: -.05em; line-height: 1; text-wrap: balance; }
+.sub { color: var(--mut); margin: 0; max-width: 62ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; min-width: 0; }
+.hud { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.pill { font-family: var(--mono); font-size: 12.5px; padding: 6px 11px; border-radius: 99px; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--mut); font-variant-numeric: tabular-nums; }
+.pill b { color: var(--fg); font-weight: 500; }
+.pill.hot { border-color: color-mix(in srgb, var(--a) 70%, transparent); color: var(--a); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; padding: 13px 20px; font-weight: 600; border: 1px solid var(--line-2); background: rgba(255,255,255,.06); transition: transform .12s, background .2s; }
+.btn:hover { background: rgba(255,255,255,.1); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--acc, var(--quiz)); color: #050507; border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .4; pointer-events: none; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.feedback { margin-top: 14px; padding: 14px 16px; border-radius: 16px; font-size: 15px; display: grid; gap: 4px; }
+.feedback.ok { background: color-mix(in srgb, var(--ok) 13%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ok) 50%, transparent); }
+.feedback.bad { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--bad) 50%, transparent); }
+.feedback b { font-size: 16px; }
+.feedback.ok b { color: var(--ok); } .feedback.bad b { color: var(--bad); }
+
+/* Quiz */
+.timer { height: 6px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 18px; }
+.timer i { display: block; height: 100%; width: 100%; background: var(--quiz); border-radius: 99px; transform-origin: left; }
+.q-topic { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--acc); }
+.q-text { font-size: clamp(21px, 3.4vw, 28px); font-weight: 650; letter-spacing: -.03em; line-height: 1.15; margin: 8px 0 18px; text-wrap: balance; }
+.opts { display: grid; gap: 10px; }
+.opt { display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px 16px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); font-size: 16px; font-weight: 500; transition: border-color .15s, background .15s, opacity .2s; }
+.opt:hover { border-color: var(--line-2); }
+.opt .l { flex: 0 0 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.07); font-family: var(--mono); font-size: 14px; }
+.opt.right { background: color-mix(in srgb, var(--ok) 18%, var(--surface-2)); border-color: var(--ok); }
+.opt.wrong { background: color-mix(in srgb, var(--bad) 16%, var(--surface-2)); border-color: var(--bad); }
+.opt.fade { opacity: .4; }
+.opts.locked .opt { pointer-events: none; }
+.big-num { font-size: clamp(56px, 12vw, 96px); font-weight: 700; letter-spacing: -.06em; line-height: 1; }
+
+/* Sortieren */
+.chooser { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.chooser button { text-align: left; padding: 16px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); display: grid; gap: 4px; }
+.chooser button:hover { border-color: var(--line-2); }
+.chooser b { font-size: 16px; }
+.chooser span { font-size: 13px; color: var(--mut); }
+.chooser em { font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+.card-stage { display: grid; place-items: center; min-height: 170px; padding: 10px 0 18px; }
+.sort-card { width: min(100%, 520px); padding: 24px; border-radius: 22px; background: linear-gradient(160deg, #1d1d27, #121218); border: 1px solid var(--line-2); box-shadow: 0 24px 60px -24px rgba(0,0,0,.9), 0 0 50px -20px var(--acc); font-size: clamp(18px, 3vw, 22px); font-weight: 600; letter-spacing: -.02em; text-align: center; text-wrap: balance; }
+.sort-card.in { animation: cardIn .35s cubic-bezier(.2,.9,.3,1.2); }
+.sort-card.out-ok { animation: cardOk .4s forwards; } .sort-card.out-bad { animation: shake .4s; }
+@keyframes cardIn { from { transform: translateY(24px) scale(.95); opacity: 0; } }
+@keyframes cardOk { to { transform: translateY(-30px) scale(.9); opacity: 0; } }
+@keyframes shake { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.bucket { padding: 16px 12px; border-radius: 16px; background: var(--surface-2); border: 1px dashed var(--line-2); font-weight: 600; font-size: 15px; display: grid; gap: 4px; justify-items: center; text-align: center; transition: background .15s, border-color .15s; }
+.bucket:hover { border-style: solid; border-color: var(--acc); }
+.bucket small { font-weight: 400; color: var(--mut); font-size: 12px; }
+.bucket.flash-ok { background: color-mix(in srgb, var(--ok) 20%, var(--surface-2)); border: 1px solid var(--ok); }
+.bucket.flash-bad { background: color-mix(in srgb, var(--bad) 18%, var(--surface-2)); border: 1px solid var(--bad); }
+
+/* Diagramme */
+.chart-box { width: 100%; max-width: 560px; margin: 0 auto; }
+.chart-box svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-box text { font-family: var(--mono); }
+.lab-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .lab-grid { grid-template-columns: 1fr; } }
+.scenario { font-size: clamp(19px, 3vw, 24px); font-weight: 650; letter-spacing: -.025em; line-height: 1.2; margin: 6px 0 4px; text-wrap: balance; }
+.market-tag { font-family: var(--mono); font-size: 12px; color: var(--acc); text-transform: uppercase; letter-spacing: .07em; }
+.step-label { font-size: 13px; color: var(--mut); margin: 16px 0 8px; }
+.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choice { padding: 12px 10px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); font-weight: 600; font-size: 14.5px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.choice:hover { border-color: var(--line-2); }
+.choice.sel { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, var(--surface-2)); }
+.choice.right { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, var(--surface-2)); }
+.choice.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--surface-2)); }
+.choice .sw { width: 12px; height: 12px; border-radius: 50%; }
+.locked .choice { pointer-events: none; }
+.readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+.readout div { padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); display: grid; gap: 2px; }
+.readout span { font-size: 11.5px; color: var(--mut); }
+.readout b { font-size: 20px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--acc); height: 28px; }
+.mission { padding: 14px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--acc) 50%, transparent); background: color-mix(in srgb, var(--acc) 10%, var(--surface)); display: grid; gap: 4px; }
+.mission small { font-family: var(--mono); font-size: 11.5px; color: var(--acc); text-transform: uppercase; letter-spacing: .07em; }
+.mission b { font-size: 17px; letter-spacing: -.02em; line-height: 1.25; }
+.toggle { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.toggle button { flex: 1; border: 0; background: none; padding: 8px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--mut); }
+.toggle button.on { background: rgba(255,255,255,.1); color: var(--fg); }
+
+/* Memory */
+.mem { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; perspective: 900px; }
+.mcard { aspect-ratio: 3 / 3.6; max-width: 100%; position: relative; border: 0; padding: 0; background: none; }
+.mcard .in { position: absolute; inset: 0; transition: transform .45s cubic-bezier(.3,.9,.3,1); transform-style: preserve-3d; }
+.mcard.open .in, .mcard.done .in { transform: rotateY(180deg); }
+.mcard .f, .mcard .b { position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden; display: grid; place-items: center; padding: 8px; text-align: center; }
+.mcard .f { background: linear-gradient(160deg, #1d1d27, #121218); border: 1px solid var(--line-2); }
+.mcard .f svg { width: 30%; height: 30%; stroke: var(--acc); opacity: .7; }
+.mcard .b { transform: rotateY(180deg); background: var(--surface-2); border: 1px solid var(--acc); font-size: clamp(11px, 2.2vw, 14.5px); font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; }
+.mcard .b.term { color: var(--acc); font-size: clamp(12px, 2.5vw, 17px); letter-spacing: -.02em; }
+.mcard.done .b { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface-2)); }
+
+.result { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 18px 0; }
+.result .sub { text-align: center; }
+.foot-note { margin-top: 30px; color: var(--dim); font-size: 13px; }
+canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(120px); z-index: 40; padding: 12px 18px; border-radius: 14px; background: #1b1b24; border: 1px solid var(--line-2); font-weight: 600; font-size: 14.5px; transition: transform .35s cubic-bezier(.2,.9,.3,1.2); white-space: nowrap; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="glow"><i></i><i></i></div>
+<canvas id="confetti"></canvas>
+<div class="toast" id="toast"></div>
+<div class="wrap">
+  <header class="bar">
+    <button class="brand" id="home-btn" aria-label="Zur Startseite"><span class="dot"></span>Markt-Arena</button>
+    <div class="xp" title="Erfahrungspunkte"><span>XP</span><b id="xp">0</b><span id="streak-ico"></span></div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<script>
+/* ───────────── Inhalte (aus Video, Arbeitsblättern und Prüfungstraining) ───────────── */
+const ICON = {
+  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+  chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',
+  slider: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+  brain: '<path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.6 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.6 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  arrowL: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+};
+const svgIcon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+const QUIZ = [
+  { t: 'Markt', c: '--markt', q: 'Was versteht man unter einem Markt?', o: ['Nur einen Ort, an dem Waren verkauft werden', 'Jeden Ort, an dem Angebot und Nachfrage zusammentreffen', 'Ein vom Staat festgelegter Handelsort', 'Ein Gebäude mit Händlern'], a: 1, e: 'Auch ein Onlineshop, die Börse oder ein Telefonat im Callcenter ist ein Markt.' },
+  { t: 'Markt', c: '--markt', q: 'Welche Aussage über einen Käufermarkt trifft zu?', o: ['Die Nachfrage übersteigt das Angebot.', 'Das Angebot übersteigt die Nachfrage.', 'Der Staat legt den Preis fest.', 'Die Anbieter haben eine starke Machtposition.'], a: 1, e: 'Angebot > Nachfrage, also sind die Käufer im Vorteil (gesättigter Markt).' },
+  { t: 'Markt', c: '--markt', q: 'Welches Beispiel gehört zu einem starren Markt?', o: ['Benzin', 'PC', 'Buchpreisbindung', 'Luxussportwagen'], a: 2, e: 'Beim starren Markt regelt der Staat den Preis mit, z. B. Buchpreisbindung.' },
+  { t: 'Markt', c: '--markt', q: 'Welcher Markt ist ein Faktormarkt?', o: ['Konsumgütermarkt', 'Produktionsgütermarkt', 'Kapitalmarkt', 'Markt für Headsets'], a: 2, e: 'Faktormärkte: Immobilien- (Boden), Arbeits- und Kapitalmarkt.' },
+  { t: 'Markt', c: '--markt', q: 'Welche zwei Aufgaben erfüllt der Markt?', o: ['Werbung und Vertrieb', 'Vermittlung und Preisbildung', 'Produktion und Lagerung', 'Steuern und Subventionen'], a: 1, e: 'Vermittlung bringt Anbieter und Nachfrager zusammen, die Preisbildung bewertet die Güter.' },
+  { t: 'Nachfrage', c: '--n', q: 'Was besagt das Gesetz der Nachfrage?', o: ['Preis ↑ → Nachfrage ↑', 'Preis ↑ → Nachfrage ↓', 'Die Nachfrage hängt nicht vom Preis ab.', 'Preis ↓ → Nachfrage ↓'], a: 1, e: 'Nachfrager wollen mit knappem Geld den größten Nutzen, deshalb kaufen sie bei hohem Preis weniger.' },
+  { t: 'Nachfrage', c: '--n', q: 'Kaffee und Tee sind für viele Verbraucher …', o: ['Komplementärgüter', 'Substitutionsgüter', 'Produktionsgüter', 'Produktionsfaktoren'], a: 1, e: 'Austauschbar, deshalb Substitutionsgüter. Ihre Nachfrage entwickelt sich entgegengesetzt.' },
+  { t: 'Nachfrage', c: '--n', q: 'Wechselakkus für E-Bikes werden deutlich billiger. Was passiert mit der Nachfrage nach E-Bikes?', o: ['Sie steigt.', 'Sie sinkt.', 'Sie bleibt gleich.', 'Das Angebot an E-Bikes sinkt.'], a: 0, e: 'Akku und E-Bike sind Komplementärgüter, ihre Nachfrage geht in die gleiche Richtung.' },
+  { t: 'Nachfrage', c: '--n', q: 'Herkömmliche Fahrräder werden deutlich billiger. Folge für die Nachfrage nach E-Bikes?', o: ['Steigt', 'Sinkt', 'Unverändert', 'Verdoppelt sich'], a: 1, e: 'Fahrrad und E-Bike sind Substitutionsgüter, die Nachfrage entwickelt sich entgegengesetzt.' },
+  { t: 'Angebot', c: '--a', q: 'Was besagt das Gesetz des Angebots?', o: ['Mit steigendem Preis wird mehr angeboten.', 'Mit steigendem Preis wird weniger angeboten.', 'Anbieter bieten immer gleich viel an.', 'Mit sinkendem Preis wird mehr angeboten.'], a: 0, e: 'Je höher der Preis, desto mehr bleibt nach Abzug der Kosten übrig. Dann lohnt es sich auch für neue Anbieter.' },
+  { t: 'Angebot', c: '--a', q: 'Durch bessere Ablauforganisation sinken die Kosten eines Callcenters um 10 %. Welche Bestimmungsgröße?', o: ['Wettbewerbssituation', 'Kosten der Produktion', 'Unternehmensziel', 'Externe Faktoren'], a: 1, e: 'Günstiger herstellen heißt, das Unternehmen kann auch günstiger anbieten.' },
+  { t: 'Angebot', c: '--a', q: 'Ein Anbieter macht sehr günstige Angebote, um 12 % Marktanteil zu erreichen. Welche Bestimmungsgröße?', o: ['Erzielbarer Marktpreis', 'Kosten der Produktion', 'Unternehmensziel', 'Externe Faktoren'], a: 2, e: 'Die Strategie (Wachstum, Marktanteil) steuert hier das Angebot.' },
+  { t: 'Angebot', c: '--a', q: 'Auf dem Arbeitsmarkt bist du als Auszubildende/r …', o: ['Nachfrager', 'Anbieter', 'Weder noch', 'Staat'], a: 1, e: 'Du bietest deine Arbeitskraft an, der Betrieb fragt sie nach. Der Preis dafür ist der Lohn.' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Laptop-Markt: Wie viele Laptops werden bei 800 € nachgefragt? (600 € → 400 Stück, je +100 € → 50 Stück weniger)', o: ['100', '200', '300', '400'], a: 2, e: '600 € → 400, 700 € → 350, 800 € → 300 Stück.' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Laptop-Markt: N 400 bei 600 €, je +100 € 50 weniger. A 0 bei 600 €, je +100 € 50 mehr. Gleichgewichtspreis?', o: ['800 €', '1.000 €', '1.200 €', '1.400 €'], a: 1, e: 'Bei 1.000 € gilt N = A = 200 Stück.' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Kartoffeln: Bei 1,50 € werden 400 kg nachgefragt und 200 kg angeboten. Was liegt vor?', o: ['Angebotsüberhang, Käufermarkt', 'Nachfrageüberhang, Verkäufermarkt', 'Gleichgewicht', 'Starrer Markt'], a: 1, e: 'Es fehlen 200 kg. Der Preis steigt Richtung Gleichgewicht.' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Headsets: 20 € → N 70 / A 30. Welche Aussage stimmt?', o: ['Angebotsüberhang von 40 Stück', 'Nachfrageüberhang von 40 Stück', 'Gleichgewicht bei 20 €', 'Es werden 70 Stück verkauft'], a: 1, e: 'Klausurfalle: 70 − 30 = 40 Stück Nachfrageüberhang, kein Angebotsüberhang.' },
+  { t: 'Gleichgewicht', c: '--gg', q: '4 €: N 600 / A 200 · 6 €: N 400 / A 400 · 8 €: N 200 / A 600. Gleichgewichtspreis?', o: ['4 €', '6 €', '8 €', '5 €'], a: 1, e: 'Bei 6 € sind angebotene und nachgefragte Menge gleich (400).' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Die Nachfrage steigt (Kurve nach rechts). Was passiert?', o: ['Preis ↑, Menge ↑', 'Preis ↓, Menge ↑', 'Preis ↑, Menge ↓', 'Preis ↓, Menge ↓'], a: 0, e: 'Nachfrage rauf heißt Preis und Menge steigen.' },
+  { t: 'Gleichgewicht', c: '--gg', q: 'Es ändert sich nur der Preis des Gutes selbst. Was passiert im Diagramm?', o: ['Die Kurve verschiebt sich nach rechts', 'Bewegung auf der Kurve', 'Die Kurve verschiebt sich nach links', 'Beide Kurven verschieben sich'], a: 1, e: 'Nur eine geänderte Bestimmungsgröße verschiebt die ganze Kurve.' },
+  { t: 'Marktformen', c: '--formen', q: 'Wenige Mineralölkonzerne beliefern Millionen Autofahrer. Marktform?', o: ['Polypol', 'Angebotsoligopol', 'Angebotsmonopol', 'Nachfrageoligopol'], a: 1, e: 'Wenige Anbieter, viele Nachfrager. Der Name richtet sich nach der kleineren Seite.' },
+  { t: 'Marktformen', c: '--formen', q: 'Viele Landwirte verkaufen Zuckerrüben an drei Zuckerfabriken. Marktform?', o: ['Angebotsoligopol', 'Nachfrageoligopol', 'Polypol', 'Nachfragemonopol'], a: 1, e: 'Viele Anbieter, wenige Nachfrager ergibt ein Nachfrageoligopol.' },
+  { t: 'Marktformen', c: '--formen', q: 'Nur ein Unternehmen betreibt das Schienennetz, viele Bahngesellschaften nutzen es. Marktform?', o: ['Angebotsmonopol', 'Nachfragemonopol', 'Zweiseitiges Monopol', 'Polypol'], a: 0, e: 'Ein Anbieter, viele Nachfrager ergibt ein Angebotsmonopol.' },
+  { t: 'Marktformen', c: '--formen', q: 'Welcher Markt kommt dem vollkommenen Markt am nächsten?', o: ['Mobilfunkverträge', 'Wertpapierbörse', 'Leitungswasser', 'Friseurdienstleistungen'], a: 1, e: 'Die Börse kommt dem vollkommenen Markt am nächsten.' },
+  { t: 'Marktformen', c: '--formen', q: 'Eine Kundin bleibt bei ihrem Handyanbieter, weil der Mitarbeiter so freundlich ist. Welche Voraussetzung fehlt?', o: ['Polypol', 'Homogene Güter', 'Keine Präferenzen', 'Markttransparenz'], a: 2, e: 'Eine persönliche Präferenz. Dialogmarketing schafft solche Präferenzen bewusst.' },
+  { t: 'Marktformen', c: '--formen', q: 'Wer einen Pflegedienst eröffnen will, braucht eine staatliche Zulassung. Was fehlt zum vollkommenen Markt?', o: ['Freier Marktzugang', 'Sofortige Reaktion', 'Markttransparenz', 'Homogene Güter'], a: 0, e: 'Zulassungen und Lizenzen versperren den Zugang.' },
+  { t: 'Staat', c: '--staat', q: 'Ein Höchstpreis unter dem Gleichgewichtspreis führt zu …', o: ['Angebotsüberhang', 'Nachfrageüberhang', 'Markträumung', 'Preissenkung durch den Markt'], a: 1, e: 'Die Ware wird knapp, es drohen Warteschlangen und Schwarzmarkt. Beispiel: Mietpreisbremse.' },
+  { t: 'Staat', c: '--staat', q: 'Ein Mindestpreis liegt …', o: ['unter dem Gleichgewichtspreis und schützt die Nachfrager', 'über dem Gleichgewichtspreis und schützt die Anbieter', 'genau auf dem Gleichgewichtspreis', 'unter dem GG und schützt die Anbieter'], a: 1, e: 'Folge: Angebotsüberhang. Beispiele: Agrarpreise, Mindestlohn.' },
+  { t: 'Funktionen', c: '--funk', q: 'Welche Funktion des Preises zeigt, wie knapp ein Gut ist?', o: ['Ausgleichsfunktion', 'Signalfunktion', 'Lenkungsfunktion', 'Auslesefunktion'], a: 1, e: 'Hoher Preis bedeutet knapp und begehrt.' },
+  { t: 'Funktionen', c: '--funk', q: 'Anbieter, die zu teuer produzieren, verschwinden vom Markt. Welche Funktion?', o: ['Signalfunktion', 'Lenkungsfunktion', 'Auslesefunktion', 'Ausgleichsfunktion'], a: 2, e: 'Auslese- bzw. Selektionsfunktion.' },
+  { t: 'Funktionen', c: '--funk', q: 'Der Preis gleicht Angebot und Nachfrage aus und räumt den Markt. Welche Funktion?', o: ['Ausgleichsfunktion', 'Lenkungsfunktion', 'Signalfunktion', 'Auslesefunktion'], a: 0, e: 'Ausgleichsfunktion: Beim Gleichgewichtspreis wird der Markt geräumt.' },
+  { t: 'Funktionen', c: '--funk', q: 'Der Preis sorgt dafür, dass Geld, Arbeit und Material dorthin fließen, wo sie am meisten gebraucht werden. Welche Funktion?', o: ['Signalfunktion', 'Lenkungsfunktion', 'Auslesefunktion', 'Ausgleichsfunktion'], a: 1, e: 'Lenkungsfunktion (Allokation der Produktionsfaktoren).' },
+];
+
+const SORT_ROUNDS = [
+  { id: 'situation', title: 'Wer hat die Macht?', desc: 'Käufer-, Verkäufer- oder starrer Markt', c: '--markt',
+    buckets: [['K', 'Käufermarkt', 'Angebot > Nachfrage'], ['V', 'Verkäufermarkt', 'Nachfrage > Angebot'], ['S', 'Starrer Markt', 'Staat regelt mit']],
+    items: [['PCs: Regale voll, viele Anbieter', 'K'], ['Neuwagen (Pkw)', 'K'], ['Benzin', 'V'], ['Luxussportwagen mit Wartezeit', 'V'], ['Schulbuch kostet überall gleich viel', 'S'], ['Gebührenordnung für Rechtsanwälte', 'S'], ['Weltweiter Maisverbrauch übersteigt die Produktion um 30 Mio. t', 'V'], ['Windpark-Zulieferer: „weniger Bedarf“, Kapazitäten stehen leer', 'K'], ['Dialogfix-Laptop für 399 €, zahlreiche Konkurrenten', 'K']] },
+  { id: 'arten', title: 'Was wird gehandelt?', desc: 'Konsumgüter-, Produktionsgüter- oder Faktormarkt', c: '--markt',
+    buckets: [['KG', 'Konsumgütermarkt', 'Haushalte kaufen'], ['PG', 'Produktionsgütermarkt', 'Firmen kaufen zum Produzieren'], ['F', 'Faktormarkt', 'Boden · Arbeit · Kapital']],
+    items: [['Dialogfix verkauft Herrn Kohl einen Laserdrucker', 'KG'], ['Dialogfix kauft 100 Headsets für den Kundenservice', 'PG'], ['Dialogfix kauft ein Grundstück fürs Firmengebäude', 'F'], ['Auf eine Stellenanzeige melden sich 60 Personen', 'F'], ['Geschäftsausstattung wird über einen Kredit finanziert', 'F'], ['Weizen und Mais werden an Rohstoffbörsen teurer', 'PG'], ['Du kaufst dir privat ein neues Handy', 'KG'], ['Bauzinsen für Hauskredite steigen über 4 %', 'F']] },
+  { id: 'nachfrage', title: 'Nachfrage-Detektiv', desc: 'Welche Bestimmungsgröße der Nachfrage wirkt?', c: '--n',
+    buckets: [['KO', 'Komplementärgut', 'ergänzt sich'], ['SU', 'Substitutionsgut', 'austauschbar'], ['EI', 'Einkommen', 'Kaufkraft'], ['VO', 'Vorlieben', 'Trend, Mode'], ['EX', 'Externe Faktoren', 'Politik, Wetter']],
+    items: [['Wechselakkus werden billiger → E-Bikes', 'KO'], ['Tankrabatt macht Autofahren billiger → Deutschlandticket', 'SU'], ['Deine Ausbildungsvergütung steigt', 'EI'], ['Im Freundeskreis verzichtet man aus Klimaschutz aufs Auto', 'VO'], ['Die Stadt sperrt die Innenstadt für private Autos', 'EX'], ['Kühler Sommer → Badebekleidung', 'EX'], ['Tee wird teurer → Kaffee', 'SU'], ['Ein bestimmtes E-Bike liegt voll im Trend', 'VO'], ['Die Tarifeinkommen steigen', 'EI']] },
+  { id: 'angebot', title: 'Angebots-Detektiv', desc: 'Welche Bestimmungsgröße des Angebots wirkt?', c: '--a',
+    buckets: [['MP', 'Marktpreis', 'Gewinnspanne'], ['KO', 'Kosten', 'Personal, Energie'], ['WB', 'Wettbewerb', 'Konkurrenz'], ['UZ', 'Unternehmensziel', 'Strategie'], ['EX', 'Externe Faktoren', 'Politik, Natur']],
+    items: [['Gute Konjunktur: höhere Preise lassen sich durchsetzen', 'MP'], ['Verbesserte Abläufe senken die Kosten um 10 %', 'KO'], ['Neue günstige E-Autos erhöhen den Preisdruck auf ältere Modelle', 'WB'], ['Für 12 % Marktanteil gibt es Kampfpreise mit wenig Gewinn', 'UZ'], ['Milder Winter → Winterjacken müssen in den Sale', 'EX'], ['Ein Anbieter orientiert sich am Marktführer', 'WB'], ['Energiepreise steigen stark', 'KO'], ['BioNTech schließt Werke, Fokus auf Krebsmedizin', 'UZ']] },
+  { id: 'vollkommen', title: 'Was fehlt zum perfekten Markt?', desc: 'Welche Voraussetzung des vollkommenen Markts fehlt?', c: '--formen',
+    buckets: [['PR', 'Keine Präferenzen', ''], ['MZ', 'Freier Marktzugang', ''], ['TR', 'Markttransparenz', ''], ['RE', 'Sofortige Reaktion', ''], ['HO', 'Homogene Güter', '']],
+    items: [['Kundin bleibt wegen des netten Mitarbeiters im Shop', 'PR'], ['Für einen Pflegedienst braucht man eine staatliche Zulassung', 'MZ'], ['Stromtarife sind so unübersichtlich, dass keiner den günstigsten findet', 'TR'], ['Zweijahresvertrag: Wechsel zum günstigeren Anbieter nicht sofort möglich', 'RE'], ['Man kauft beim Bäcker um die Ecke, weil er so nah ist', 'PR'], ['Markenjeans vs. No-Name-Jeans', 'HO'], ['Aus Gewohnheit immer derselbe Supermarkt', 'RE']] },
+];
+
+const SCENARIOS = [
+  { m: 'Kartoffeln · Wochenmarkt', s: 'Nach einem heißen Sommer fällt die Kartoffelernte schlecht aus.', k: 'A', d: -1, why: 'Weniger Ernte (externer Faktor) bedeutet, bei jedem Preis wird weniger angeboten.' },
+  { m: 'Weihnachtsbäume', s: 'Produktionskosten steigen, viele Erzeuger geben den Anbau auf.', k: 'A', d: -1, why: 'Höhere Kosten und weniger Anbieter verschieben das Angebot nach links.' },
+  { m: 'Weihnachtsbäume', s: 'Immer mehr Haushalte kaufen zusätzlich einen Zweitbaum für die Terrasse.', k: 'N', d: 1, why: 'Vorlieben ändern sich, es wird mehr nachgefragt.' },
+  { m: 'Headsets für Callcenter', s: 'Ein Hersteller verbessert seine Fertigung und kann deutlich mehr Headsets herstellen.', k: 'A', d: 1, why: 'Sinkende Stückkosten verschieben das Angebot nach rechts.' },
+  { m: 'Deutschlandticket', s: 'Ein „Tankrabatt“ macht Autofahren billiger.', k: 'N', d: -1, why: 'Das Auto ist ein Substitut und wird billiger, also sinkt die Nachfrage nach dem Ticket.' },
+  { m: 'Flüge im Winter', s: 'Wegen hoher Kerosinkosten kürzt Eurowings ihr Winterangebot um 5 %.', k: 'A', d: -1, why: 'Höhere Kosten der Produktion verschieben das Angebot nach links.' },
+  { m: 'Laptops', s: 'Wegen mobilen Arbeitens steigen viele vom PC auf den Laptop um.', k: 'N', d: 1, why: 'Geänderte Bedürfnisse verschieben die Nachfrage nach rechts.' },
+  { m: 'Laptops', s: 'Vorhandene Geräte werden aus Gründen der Nachhaltigkeit länger genutzt.', k: 'N', d: -1, why: 'Es wird weniger nachgefragt, also verschiebt sich die Nachfrage nach links.' },
+  { m: 'E-Bikes', s: 'Die Tarifeinkommen steigen deutlich.', k: 'N', d: 1, why: 'Mehr verfügbares Einkommen verschiebt die Nachfrage nach rechts.' },
+  { m: 'Laptops', s: 'Verbesserte Produktionsabläufe: Hersteller bieten mehr Laptops an.', k: 'A', d: 1, why: 'Bessere Abläufe verschieben das Angebot nach rechts.' },
+];
+
+const MEMORY = [
+  ['Polypol', 'viele Anbieter, viele Nachfrager'], ['Oligopol', 'wenige Marktteilnehmer'], ['Monopol', 'nur ein Marktteilnehmer'],
+  ['Komplementär­güter', 'ergänzen sich: E-Bike + Akku'], ['Substitutions­güter', 'austauschbar: Kaffee ↔ Tee'],
+  ['Käufermarkt', 'Angebot > Nachfrage'], ['Verkäufermarkt', 'Nachfrage > Angebot'], ['Höchstpreis', 'liegt unter dem GG'],
+  ['Mindestpreis', 'liegt über dem GG'], ['Signal­funktion', 'zeigt die Knappheit'], ['Markt­transparenz', 'alle kennen alle Preise'],
+  ['Gleichgewichts­preis', 'Schnittpunkt von N und A'], ['Starrer Markt', 'Buchpreisbindung'], ['Faktormarkt', 'Boden, Arbeit, Kapital'],
+];
+
+/* ───────────── Zustand ───────────── */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('arena:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('arena:' + k, JSON.stringify(v)); } catch {} },
+};
+const S = { xp: store.get('xp', 0), best: store.get('best', {}), streak: 0 };
+const GAMES = [
+  { id: 'quiz', name: 'Blitz-Quiz', ico: 'zap', c: '--quiz', desc: '10 Fragen, 15 Sekunden pro Frage. Serien geben Bonuspunkte.', topics: ['alle Themen'], max: 2500 },
+  { id: 'sortieren', name: 'Sortier-Duell', ico: 'layers', c: '--markt', desc: 'Situationen blitzschnell der richtigen Kategorie zuordnen.', topics: ['Marktsituationen', 'Marktarten', 'Bestimmungsgrößen', 'vollk. Markt'], max: 5 },
+  { id: 'kurven', name: 'Kurven-Lab', ico: 'chart', c: '--gg', desc: 'Welche Kurve verschiebt sich wohin, und was passiert mit Preis und Menge?', topics: ['Verschiebungen', '4 Fälle'], max: 8 },
+  { id: 'preis', name: 'Preis-Regler', ico: 'slider', c: '--staat', desc: 'Schieb den Preis und erfülle Missionen: Gleichgewicht, Überhänge, Höchstpreis.', topics: ['Gleichgewicht', 'Überhänge', 'Staatseingriffe'], max: 6 },
+  { id: 'memory', name: 'Begriffe-Memory', ico: 'brain', c: '--formen', desc: 'Finde die Paare aus Fachbegriff und Bedeutung, mit möglichst wenigen Zügen.', topics: ['Begriffe', 'Marktformen', 'Funktionen'], max: 1 },
+];
+
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const setAccent = (c, c2) => { document.documentElement.style.setProperty('--acc', `var(${c})`); document.documentElement.style.setProperty('--acc2', `var(${c2 || '--n'})`); };
+function addXP(n) { S.xp += n; store.set('xp', S.xp); const el = $('#xp'); el.textContent = S.xp; el.animate?.([{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 300 }); }
+function setStreak(n) { S.streak = n; $('#streak-ico').innerHTML = n >= 3 ? `<span style="color:var(--a)">🔥${n}</span>` : ''; }
+function saveBest(id, v) { const old = S.best[id] ?? 0; if (v > old) { S.best[id] = v; store.set('best', S.best); return true; } return false; }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1800); }
+$('#xp').textContent = S.xp;
+
+/* Konfetti */
+const cv = $('#confetti'), cx = cv.getContext('2d'); let parts = [], raf = 0;
+function confetti(n = 120) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+  const cols = ['#C6FF3D', '#8B6CFF', '#3D8BFF', '#FF8A3D', '#2EE6A6', '#FF4D8D', '#FFD23D'];
+  for (let i = 0; i < n; i++) parts.push({ x: innerWidth / 2, y: innerHeight * .35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 12 - 4, s: Math.random() * 7 + 4, r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[i % cols.length], life: 0 });
+  if (!raf) tick();
+}
+function tick() {
+  cx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); cx.clearRect(0, 0, innerWidth, innerHeight);
+  parts.forEach(p => { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life++; cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c; cx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); cx.restore(); });
+  parts = parts.filter(p => p.y < innerHeight + 40 && p.life < 240);
+  raf = parts.length ? requestAnimationFrame(tick) : (cx.clearRect(0, 0, innerWidth, innerHeight), 0);
+}
+
+/* ───────────── Router ───────────── */
+let cleanup = null;
+function route() {
+  if (cleanup) { cleanup(); cleanup = null; }
+  const id = location.hash.slice(1);
+  const g = GAMES.find(x => x.id === id);
+  window.scrollTo(0, 0);
+  if (!g) return renderHome();
+  setAccent(g.c, '--markt');
+  ({ quiz: gameQuiz, sortieren: gameSort, kurven: gameCurves, preis: gamePrice, memory: gameMemory })[id](g);
+}
+addEventListener('hashchange', route);
+$('#home-btn').onclick = () => { location.hash = ''; };
+const head = (g, sub) => `<div class="view-head"><button class="back" onclick="location.hash=''">${svgIcon('arrowL').replace('<svg', '<svg width="16" height="16"')} Arena</button><span class="kicker">${g.topics.join(' · ')}</span><h2>${g.name}</h2><p class="sub">${sub}</p></div>`;
+
+function progress() {
+  const parts = GAMES.map(g => Math.min(1, (S.best[g.id] || 0) / g.max));
+  return Math.round(parts.reduce((a, b) => a + b, 0) / GAMES.length * 100);
+}
+function renderHome() {
+  setAccent('--quiz', '--markt');
+  const p = progress();
+  app.innerHTML = `
+    <section class="hero">
+      <span class="kicker">KDM 25a · Klausur Di, 17.11.</span>
+      <h1>Markt-Arena.<br><span>Spielend klausurfit.</span></h1>
+      <p class="lead">Fünf Lernspiele zu allem, was morgen drankommt: Markt, Nachfrage, Angebot, Gleichgewichtspreis, Marktformen, Staatseingriffe und die Funktionen des Preises.</p>
+      <div class="meter"><div class="meter-top"><span>Klausur-Ready</span><b>${p} %</b></div><div class="track"><i id="meter"></i></div></div>
+    </section>
+    <section class="games">${GAMES.map(g => {
+      const b = S.best[g.id];
+      const best = b == null ? 'noch nicht gespielt' : (g.id === 'quiz' ? `Rekord ${b} Pkt.` : g.id === 'memory' ? 'geschafft ✓' : `Bestwert ${b} / ${g.max}`);
+      return `<button class="tile" style="--c:var(${g.c})" onclick="location.hash='${g.id}'"><div class="ico">${svgIcon(g.ico)}</div><h3>${g.name}</h3><p>${g.desc}</p><div class="topics">${g.topics.map(t => `<span>${t}</span>`).join('')}</div><div class="meta"><span>${best}</span><b>Spielen →</b></div></button>`;
+    }).join('')}</section>
+    <p class="foot-note">Dein Fortschritt wird nur in diesem Browser gespeichert. Tipp: Starte mit dem Blitz-Quiz und spiel dann gezielt die Spiele zu deinen Fehlern.</p>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { $('#meter').style.width = p + '%'; }));
+}
+
+/* ───────────── 1 · Blitz-Quiz ───────────── */
+function gameQuiz(g) {
+  const qs = shuffle(QUIZ).slice(0, 10).map(q => { const idx = shuffle(q.o.map((_, i) => i)); return { ...q, o: idx.map(i => q.o[i]), a: idx.indexOf(q.a) }; });
+  let i = 0, score = 0, right = 0, timer = null, t0 = 0; const LIMIT = 15000; setStreak(0);
+  const wrong = [];
+  function show() {
+    const q = qs[i];
+    document.documentElement.style.setProperty('--acc', `var(${q.c})`);
+    app.innerHTML = head(g, 'Antworte schnell: Je schneller du richtig liegst, desto mehr Punkte gibt es. Ab drei richtigen in Folge gibt es ×2.') + `
+      <div class="panel">
+        <div class="hud"><span class="pill">Frage <b>${i + 1}</b>/10</span><span class="pill">Punkte <b>${score}</b></span>${S.streak >= 3 ? `<span class="pill hot">🔥 Serie ${S.streak} · ×2</span>` : ''}</div>
+        <div class="timer"><i id="tbar"></i></div>
+        <div class="q-topic">${q.t}</div><div class="q-text">${q.q}</div>
+        <div class="opts" id="opts">${q.o.map((o, k) => `<button class="opt" data-k="${k}"><span class="l">${'ABCD'[k]}</span><span>${o}</span></button>`).join('')}</div>
+        <div id="fb"></div>
+      </div>`;
+    $('#opts').onclick = (e) => { const b = e.target.closest('.opt'); if (b) answer(+b.dataset.k); };
+    t0 = performance.now();
+    const bar = $('#tbar');
+    const step = () => { const el = performance.now() - t0; const r = Math.max(0, 1 - el / LIMIT); bar.style.transform = `scaleX(${r})`; bar.style.background = r < .3 ? 'var(--bad)' : 'var(--quiz)'; if (r <= 0) answer(-1); else timer = requestAnimationFrame(step); };
+    timer = requestAnimationFrame(step);
+  }
+  function answer(k) {
+    cancelAnimationFrame(timer);
+    const q = qs[i], opts = $('#opts'); if (opts.classList.contains('locked')) return; opts.classList.add('locked');
+    const ok = k === q.a; const el = performance.now() - t0;
+    [...opts.children].forEach((b, j) => b.classList.add(j === q.a ? 'right' : j === k ? 'wrong' : 'fade'));
+    let pts = 0;
+    if (ok) { setStreak(S.streak + 1); right++; pts = Math.round((100 + 150 * Math.max(0, 1 - el / LIMIT)) * (S.streak >= 3 ? 2 : 1)); score += pts; addXP(Math.round(pts / 10)); }
+    else { setStreak(0); wrong.push(q); }
+    $('#fb').innerHTML = `<div class="feedback ${ok ? 'ok' : 'bad'}"><b>${ok ? `Richtig! +${pts}` : k === -1 ? 'Zeit abgelaufen' : 'Leider falsch'}</b><span>${q.e}</span></div><div class="row" style="margin-top:14px"><button class="btn primary" id="next">${i < 9 ? 'Nächste Frage' : 'Auswertung'} →</button></div>`;
+    $('#next').onclick = () => { i++; i < 10 ? show() : end(); };
+    $('#next').focus();
+  }
+  function end() {
+    const rec = saveBest('quiz', score); if (right >= 8) confetti();
+    const verdict = right >= 9 ? 'Klausur kann kommen! 🏆' : right >= 7 ? 'Stark. Noch kurz die Fehler anschauen.' : right >= 5 ? 'Solide Basis. Spiel die Themen deiner Fehler nochmal.' : 'Schau dir die Kapitel im Video oder Lernzettel nochmal an.';
+    app.innerHTML = head(g, 'Auswertung') + `<div class="panel"><div class="result"><span class="kicker">${rec ? 'Neuer Rekord' : 'Ergebnis'}</span><div class="big-num">${score}</div><p class="sub">${right} von 10 richtig · ${verdict}</p><div class="row" style="justify-content:center"><button class="btn primary" id="again">Nochmal spielen</button><button class="btn" onclick="location.hash=''">Zur Arena</button></div></div>
+      ${wrong.length ? `<div style="margin-top:12px;display:grid;gap:8px"><div class="step-label">Das solltest du dir nochmal anschauen:</div>${wrong.map(q => `<div class="feedback bad"><b style="color:var(--fg);font-size:15px">${q.q}</b><span>Richtig: <strong>${q.o[q.a]}</strong>. ${q.e}</span></div>`).join('')}</div>` : ''}</div>`;
+    $('#again').onclick = () => gameQuiz(g);
+  }
+  show();
+  cleanup = () => cancelAnimationFrame(timer);
+}
+
+/* ───────────── 2 · Sortier-Duell ───────────── */
+function gameSort(g) {
+  const done = store.get('sortdone', {});
+  app.innerHTML = head(g, 'Wähle eine Runde. Dann tippst du für jede Karte die passende Kategorie an. Fehler werden sofort erklärt.') + `
+    <div class="panel"><div class="chooser">${SORT_ROUNDS.map(r => `<button data-r="${r.id}" style="--acc:var(${r.c})"><b>${r.title}</b><span>${r.desc}</span><em>${r.items.length} Karten${done[r.id] != null ? ` · Bestwert ${done[r.id]} / ${r.items.length}` : ''}</em></button>`).join('')}</div></div>`;
+  app.querySelector('.chooser').onclick = (e) => { const b = e.target.closest('button'); if (b) playRound(SORT_ROUNDS.find(r => r.id === b.dataset.r)); };
+  function playRound(r) {
+    setAccent(r.c, '--markt');
+    const items = shuffle(r.items); let i = 0, right = 0, busy = false;
+    app.innerHTML = head({ ...g, name: r.title }, r.desc) + `<div class="panel"><div class="hud"><span class="pill">Karte <b id="sc-i">1</b>/${items.length}</span><span class="pill">Richtig <b id="sc-r">0</b></span></div>
+      <div class="card-stage"><div class="sort-card in" id="card"></div></div>
+      <div class="buckets" id="buckets">${r.buckets.map(([k, n, s]) => `<button class="bucket" data-k="${k}">${n}${s ? `<small>${s}</small>` : ''}</button>`).join('')}</div><div id="fb"></div></div>`;
+    const card = $('#card');
+    const showCard = () => { card.className = 'sort-card'; void card.offsetWidth; card.classList.add('in'); card.textContent = items[i][0]; $('#sc-i').textContent = i + 1; };
+    showCard();
+    $('#buckets').onclick = (e) => {
+      const b = e.target.closest('.bucket'); if (!b || busy) return; busy = true;
+      const correct = items[i][1]; const ok = b.dataset.k === correct;
+      const cb = $(`.bucket[data-k="${correct}"]`);
+      if (ok) { right++; $('#sc-r').textContent = right; addXP(5); b.classList.add('flash-ok'); card.classList.add('out-ok'); $('#fb').innerHTML = ''; }
+      else { b.classList.add('flash-bad'); cb.classList.add('flash-ok'); card.classList.add('out-bad'); $('#fb').innerHTML = `<div class="feedback bad"><b>Nicht ganz</b><span>„${items[i][0]}“ gehört zu <strong>${r.buckets.find(x => x[0] === correct)[1]}</strong>.</span></div>`; }
+      setTimeout(() => {
+        b.classList.remove('flash-ok', 'flash-bad'); cb.classList.remove('flash-ok'); busy = false; i++;
+        if (i < items.length) { if (ok) $('#fb').innerHTML = ''; showCard(); }
+        else finish();
+      }, ok ? 450 : 1700);
+    };
+    function finish() {
+      const prev = done[r.id] ?? -1; if (right > prev) { done[r.id] = right; store.set('sortdone', done); }
+      const perfect = Object.entries(done).filter(([id, v]) => v === SORT_ROUNDS.find(x => x.id === id).items.length).length;
+      saveBest('sortieren', perfect);
+      if (right === items.length) confetti();
+      app.innerHTML = head({ ...g, name: r.title }, 'Runde beendet') + `<div class="panel"><div class="result"><span class="kicker">${right === items.length ? 'Perfekte Runde' : 'Ergebnis'}</span><div class="big-num">${right}/${items.length}</div><p class="sub">${right === items.length ? 'Fehlerfrei. Weiter zur nächsten Runde!' : 'Spiel die Runde nochmal, bis sie fehlerfrei sitzt.'} Perfekte Runden insgesamt: ${perfect} / ${SORT_ROUNDS.length}</p><div class="row" style="justify-content:center"><button class="btn primary" id="again">Nochmal</button><button class="btn" id="other">Andere Runde</button></div></div></div>`;
+      $('#again').onclick = () => playRound(r); $('#other').onclick = () => gameSort(g);
+    }
+  }
+}
+
+/* ───────────── 3 · Kurven-Lab ───────────── */
+function curveSVG(id) {
+  return `<svg viewBox="0 0 420 320" id="${id}" role="img" aria-label="Preis-Mengen-Diagramm">
+    <defs><marker id="ah-${id}" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="rgba(255,255,255,.6)"/></marker></defs>
+    <line x1="50" y1="280" x2="405" y2="280" stroke="rgba(255,255,255,.55)" stroke-width="1.5" marker-end="url(#ah-${id})"/>
+    <line x1="50" y1="280" x2="50" y2="14" stroke="rgba(255,255,255,.55)" stroke-width="1.5" marker-end="url(#ah-${id})"/>
+    <text x="58" y="22" fill="#F5F5F7" font-size="12">Preis</text><text x="404" y="270" fill="#F5F5F7" font-size="12" text-anchor="end">Menge</text>
+    <g class="layer"></g></svg>`;
+}
+function gameCurves(g) {
+  const list = shuffle(SCENARIOS).slice(0, 8); let i = 0, pts = 0;
+  const K = 200 / 280; // Steigung im SVG
+  // Basis: N von (80,40) nach (360,240); A von (80,240) nach (360,40); Schnitt bei (220,140)
+  function draw(svg, dN, dA, ghost) {
+    const L = svg.querySelector('.layer');
+    const line = (x1, y1, x2, y2, col, w, dash, op) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" ${dash ? 'stroke-dasharray="7 7"' : ''} opacity="${op}"/>`;
+    const u = 140 + (dN + dA) / 2, x = 80 + u, y = 40 + (u - dN) * K;
+    let h = '';
+    if (ghost) { h += line(80, 40, 360, 240, '#3D8BFF', 2, true, .35) + line(80, 240, 360, 40, '#FF8A3D', 2, true, .35); h += `<circle cx="220" cy="140" r="4" fill="rgba(255,255,255,.4)"/>`; }
+    h += line(80 + dN, 40, 360 + dN, 240, '#3D8BFF', 4, false, 1) + line(80 + dA, 240, 360 + dA, 40, '#FF8A3D', 4, false, 1);
+    h += `<text x="${66 + dN}" y="36" fill="#3D8BFF" font-size="14" font-weight="700">N</text><text x="${364 + dA}" y="36" fill="#FF8A3D" font-size="14" font-weight="700">A</text>`;
+    h += `<line x1="${x}" y1="${y}" x2="${x}" y2="280" stroke="rgba(255,255,255,.5)" stroke-dasharray="4 5"/><line x1="50" y1="${y}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.5)" stroke-dasharray="4 5"/>`;
+    h += `<circle cx="${x}" cy="${y}" r="7" fill="#fff"/><text x="${x + 12}" y="${y - 10}" fill="#fff" font-size="12" font-weight="700">GG</text>`;
+    h += `<text x="44" y="${y + 4}" fill="rgba(255,255,255,.7)" font-size="11" text-anchor="end">P</text><text x="${x}" y="296" fill="rgba(255,255,255,.7)" font-size="11" text-anchor="middle">M</text>`;
+    L.innerHTML = h;
+  }
+  function animate(svg, kind, dir) {
+    const target = 70 * dir; let st = null;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const f = (t) => { st ??= t; const p = reduce ? 1 : Math.min(1, (t - st) / 900); const e = 1 - Math.pow(1 - p, 3); draw(svg, kind === 'N' ? target * e : 0, kind === 'A' ? target * e : 0, true); if (p < 1) requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  }
+  function show() {
+    const sc = list[i]; let curve = null, price = null, qty = null, phase = 1;
+    app.innerHTML = head(g, 'Lies die Meldung. Entscheide, welche Kurve sich wohin verschiebt, und sag dann voraus, was mit Preis und Menge passiert.') + `
+      <div class="panel"><div class="hud"><span class="pill">Fall <b>${i + 1}</b>/${list.length}</span><span class="pill">Punkte <b>${pts}</b></span></div>
+      <div class="lab-grid">
+        <div class="chart-box">${curveSVG('cv')}</div>
+        <div>
+          <div class="market-tag">Markt: ${sc.m}</div>
+          <div class="scenario">${sc.s}</div>
+          <div class="step-label">1 · Welche Kurve verschiebt sich wohin?</div>
+          <div class="choice-grid" id="c1">
+            <button class="choice" data-v="N,-1"><span class="sw" style="background:#3D8BFF"></span>N ← links</button>
+            <button class="choice" data-v="N,1"><span class="sw" style="background:#3D8BFF"></span>N → rechts</button>
+            <button class="choice" data-v="A,-1"><span class="sw" style="background:#FF8A3D"></span>A ← links</button>
+            <button class="choice" data-v="A,1"><span class="sw" style="background:#FF8A3D"></span>A → rechts</button>
+          </div>
+          <div id="step2" hidden>
+            <div class="step-label">2 · Was passiert mit Preis und Menge?</div>
+            <div class="choice-grid" id="c2">
+              <button class="choice" data-p="1">Preis ↑</button><button class="choice" data-p="-1">Preis ↓</button>
+              <button class="choice" data-q="1">Menge ↑</button><button class="choice" data-q="-1">Menge ↓</button>
+            </div>
+          </div>
+          <div id="fb"></div>
+        </div>
+      </div></div>`;
+    const svg = $('#cv'); draw(svg, 0, 0, false);
+    $('#c1').onclick = (e) => {
+      const b = e.target.closest('.choice'); if (!b || phase !== 1) return; phase = 2;
+      const [k, d] = b.dataset.v.split(','); curve = [k, +d];
+      const ok = k === sc.k && +d === sc.d;
+      $('#c1').classList.add('locked');
+      b.classList.add(ok ? 'right' : 'wrong');
+      if (!ok) $(`#c1 [data-v="${sc.k},${sc.d}"]`).classList.add('right');
+      animate(svg, sc.k, sc.d);
+      if (ok) { pts += 1; addXP(10); }
+      $('#fb').innerHTML = `<div class="feedback ${ok ? 'ok' : 'bad'}"><b>${ok ? 'Richtig erkannt!' : 'Andersrum'}</b><span>${sc.why}</span></div>`;
+      $('#step2').hidden = false;
+    };
+    $('#c2').onclick = (e) => {
+      const b = e.target.closest('.choice'); if (!b || phase !== 2) return;
+      if (b.dataset.p) { price = +b.dataset.p; $('#c2').querySelectorAll('[data-p]').forEach(x => x.classList.toggle('sel', x === b)); }
+      if (b.dataset.q) { qty = +b.dataset.q; $('#c2').querySelectorAll('[data-q]').forEach(x => x.classList.toggle('sel', x === b)); }
+      if (price == null || qty == null) return;
+      phase = 3;
+      const tp = sc.k === 'N' ? sc.d : -sc.d, tq = sc.d;
+      const ok = price === tp && qty === tq;
+      $('#c2').classList.add('locked');
+      $('#c2').querySelectorAll('.choice').forEach(x => { x.classList.remove('sel'); const v = x.dataset.p ? +x.dataset.p : +x.dataset.q; const t = x.dataset.p ? tp : tq; const chosen = x.dataset.p ? price : qty; if (v === t) x.classList.add('right'); else if (v === chosen) x.classList.add('wrong'); });
+      if (ok) { pts += 1; addXP(10); }
+      const name = { 'A,1': 'Angebot steigt', 'A,-1': 'Angebot sinkt', 'N,1': 'Nachfrage steigt', 'N,-1': 'Nachfrage sinkt' }[sc.k + ',' + sc.d];
+      $('#fb').innerHTML += `<div class="feedback ${ok ? 'ok' : 'bad'}"><b>${ok ? 'Perfekt!' : 'Fast'}</b><span>Fall „${name}“: Preis ${tp > 0 ? '↑' : '↓'}, Menge ${tq > 0 ? '↑' : '↓'}. Merke: rechts = mehr, links = weniger.</span></div><div class="row" style="margin-top:14px"><button class="btn primary" id="next">${i < list.length - 1 ? 'Nächster Fall' : 'Auswertung'} →</button></div>`;
+      $('#next').onclick = () => { i++; i < list.length ? show() : end(); };
+    };
+  }
+  function end() {
+    const score = Math.round(pts / 2); saveBest('kurven', score); if (score >= 7) confetti();
+    app.innerHTML = head(g, 'Auswertung') + `<div class="panel"><div class="result"><span class="kicker">Ergebnis</span><div class="big-num">${score}/${list.length}</div><p class="sub">Komplett richtig gelöste Fälle (${pts} von ${list.length * 2} Teilpunkten). ${score >= 7 ? 'Die 4 Fälle sitzen!' : 'Tipp: Erst die Bestimmungsgröße suchen, dann die Kurve. Angebot rechts: Preis ↓ Menge ↑. Nachfrage rechts: beides ↑.'}</p><div class="row" style="justify-content:center"><button class="btn primary" id="again">Neue Fälle</button><button class="btn" onclick="location.hash=''">Zur Arena</button></div></div></div>`;
+    $('#again').onclick = () => gameCurves(g);
+  }
+  show();
+}
+
+/* ───────────── 4 · Preis-Regler ───────────── */
+function gamePrice(g) {
+  // Kartoffelmarkt: N = 700 − 200p, A1 = 200p − 100, A2 = 200p − 200 (schlechte Ernte)
+  const MISSIONS = [
+    { t: 'Stell den Gleichgewichtspreis ein.', a2: false, check: (p) => p === 2, hint: 'Gesucht ist der Preis, bei dem angebotene und nachgefragte Menge gleich sind.', ok: 'Bei 2,00 € gilt N = A = 300 kg. Der Markt wird geräumt.' },
+    { t: 'Erzeuge einen Nachfrageüberhang von genau 200 kg.', a2: false, check: (p) => p === 1.5, hint: 'Nachfrageüberhang entsteht unter dem Gleichgewichtspreis.', ok: '1,50 €: N 400 − A 200 = 200 kg. Verkäufermarkt, der Preis würde steigen.' },
+    { t: 'Erzeuge einen Angebotsüberhang von 400 kg. Welche Marktsituation ist das?', a2: false, check: (p) => p === 3, hint: 'Angebotsüberhang gibt es über dem Gleichgewichtspreis. Pro 0,25 € wächst er um 100 kg.', ok: '3,00 €: A 500 − N 100 = 400 kg. Käufermarkt, der Preis würde fallen.' },
+    { t: 'Der Staat setzt einen Höchstpreis, der wirkt und 100 kg Nachfrageüberhang erzeugt.', a2: false, check: (p) => p === 1.75, hint: 'Ein wirksamer Höchstpreis liegt unter dem Gleichgewicht.', ok: '1,75 €: N 350 − A 250 = 100 kg. Folge: Knappheit, Schlangen, Schwarzmarkt.' },
+    { t: 'Ein Mindestpreis soll Bauern schützen und genau 200 kg Überschuss erzeugen.', a2: false, check: (p) => p === 2.5, hint: 'Ein wirksamer Mindestpreis liegt über dem Gleichgewicht.', ok: '2,50 €: A 400 − N 200 = 200 kg Angebotsüberhang. Der Staat muss aufkaufen und lagern.' },
+    { t: 'Schlechte Ernte! Das Angebot ist jetzt A2. Finde das neue Gleichgewicht.', a2: true, check: (p) => p === 2.25, hint: 'Bei jedem Preis werden 100 kg weniger angeboten. Der Schnittpunkt wandert nach oben links.', ok: '2,25 €: N = A2 = 250 kg. Preis ↑, Menge ↓, genau wie im Video.' },
+  ];
+  let m = 0, p = 1, solved = 0, tries = 0;
+  const X = q => 50 + q / 600 * 340, Y = pr => 280 - pr / 3.5 * 260;
+  function render() {
+    const M = MISSIONS[m];
+    app.innerHTML = head(g, 'Verschieb den Preis auf dem Kartoffelmarkt (Wochenmarkt Kiel) und erfülle die Missionen. Pro richtiger Mission gibt es XP.') + `
+      <div class="panel"><div class="hud"><span class="pill">Mission <b>${m + 1}</b>/${MISSIONS.length}</span><span class="pill">Gelöst <b>${solved}</b></span></div>
+      <div class="lab-grid">
+        <div class="chart-box"><svg viewBox="0 0 420 320" id="pv"></svg></div>
+        <div style="display:grid;gap:12px">
+          <div class="mission"><small>Mission ${m + 1}</small><b>${M.t}</b></div>
+          <div class="readout"><div><span>Preis je kg</span><b id="r-p"></b></div><div><span>Nachfrage</span><b id="r-n" style="color:var(--n)"></b></div><div><span>Angebot</span><b id="r-a" style="color:var(--a)"></b></div></div>
+          <label for="pr" class="step-label" style="margin:0">Preis verschieben (in 0,25-€-Schritten)</label>
+          <input type="range" id="pr" min="1" max="3" step="0.25" value="${p}">
+          <div id="state" class="pill" style="justify-self:start"></div>
+          <div class="row"><button class="btn primary" id="check">Prüfen</button><button class="btn" id="skip">Überspringen</button></div>
+          <div id="fb"></div>
+        </div>
+      </div></div>`;
+    const svg = $('#pv'); const inp = $('#pr');
+    const upd = () => {
+      p = +inp.value; const n = 700 - 200 * p, a = M.a2 ? 200 * p - 200 : 200 * p - 100;
+      $('#r-p').textContent = p.toFixed(2).replace('.', ',') + ' €'; $('#r-n').textContent = n + ' kg'; $('#r-a').textContent = a + ' kg';
+      const diff = n - a;
+      $('#state').innerHTML = diff === 0 ? '<b style="color:var(--gg)">Gleichgewicht: Markt geräumt</b>' : diff > 0 ? `<b style="color:var(--n)">Nachfrageüberhang ${diff} kg</b> · Verkäufermarkt` : `<b style="color:var(--a)">Angebotsüberhang ${-diff} kg</b> · Käufermarkt`;
+      let h = `<defs><marker id="ah-pv" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="rgba(255,255,255,.6)"/></marker></defs>`;
+      [1, 1.5, 2, 2.5, 3].forEach(v => h += `<line x1="50" x2="390" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(255,255,255,.06)"/><text x="44" y="${Y(v) + 4}" fill="rgba(255,255,255,.5)" font-size="10" text-anchor="end">${v.toFixed(2).replace('.', ',')}</text>`);
+      [100, 200, 300, 400, 500].forEach(v => h += `<text x="${X(v)}" y="296" fill="rgba(255,255,255,.5)" font-size="10" text-anchor="middle">${v}</text>`);
+      h += `<line x1="50" y1="280" x2="405" y2="280" stroke="rgba(255,255,255,.55)" stroke-width="1.5" marker-end="url(#ah-pv)"/><line x1="50" y1="280" x2="50" y2="14" stroke="rgba(255,255,255,.55)" stroke-width="1.5" marker-end="url(#ah-pv)"/>`;
+      h += `<text x="58" y="22" fill="#F5F5F7" font-size="12">Preis (€/kg)</text><text x="404" y="270" fill="#F5F5F7" font-size="12" text-anchor="end">Menge (kg)</text>`;
+      h += `<line x1="${X(500)}" y1="${Y(1)}" x2="${X(100)}" y2="${Y(3)}" stroke="#3D8BFF" stroke-width="4" stroke-linecap="round"/><text x="${X(100) - 14}" y="${Y(3) - 6}" fill="#3D8BFF" font-size="13" font-weight="700">N</text>`;
+      if (M.a2) h += `<line x1="${X(100)}" y1="${Y(1)}" x2="${X(500)}" y2="${Y(3)}" stroke="#FF8A3D" stroke-width="2" stroke-dasharray="6 6" opacity=".4"/><line x1="${X(0)}" y1="${Y(1)}" x2="${X(400)}" y2="${Y(3)}" stroke="#FF8A3D" stroke-width="4" stroke-linecap="round"/><text x="${X(400) + 6}" y="${Y(3) - 6}" fill="#FF8A3D" font-size="13" font-weight="700">A2</text>`;
+      else h += `<line x1="${X(100)}" y1="${Y(1)}" x2="${X(500)}" y2="${Y(3)}" stroke="#FF8A3D" stroke-width="4" stroke-linecap="round"/><text x="${X(500) + 6}" y="${Y(3) - 6}" fill="#FF8A3D" font-size="13" font-weight="700">A</text>`;
+      const y = Y(p);
+      h += `<line x1="50" x2="390" y1="${y}" y2="${y}" stroke="#FFD23D" stroke-width="2" stroke-dasharray="8 5"/>`;
+      if (diff !== 0) h += `<line x1="${X(Math.min(n, a))}" x2="${X(Math.max(n, a))}" y1="${y}" y2="${y}" stroke="${diff > 0 ? '#3D8BFF' : '#FF8A3D'}" stroke-width="12" stroke-linecap="round" opacity=".55"/>`;
+      h += `<circle cx="${X(n)}" cy="${y}" r="6" fill="#3D8BFF"/><circle cx="${X(Math.max(0, a))}" cy="${y}" r="6" fill="#FF8A3D"/>`;
+      if (diff === 0) h += `<circle cx="${X(n)}" cy="${y}" r="11" fill="none" stroke="#fff" stroke-width="2"/>`;
+      svg.innerHTML = h;
+    };
+    inp.oninput = upd; upd();
+    $('#check').onclick = () => {
+      tries++;
+      if (M.check(p)) {
+        solved++; addXP(tries === 1 ? 30 : 15); confetti(60);
+        $('#fb').innerHTML = `<div class="feedback ok"><b>Mission erfüllt!</b><span>${M.ok}</span></div><div class="row" style="margin-top:12px"><button class="btn primary" id="next">${m < MISSIONS.length - 1 ? 'Nächste Mission' : 'Auswertung'} →</button></div>`;
+        $('#check').disabled = true; $('#skip').disabled = true;
+        $('#next').onclick = () => { m++; tries = 0; m < MISSIONS.length ? render() : end(); };
+      } else {
+        $('#fb').innerHTML = `<div class="feedback bad"><b>Noch nicht</b><span>${M.hint}</span></div>`;
+      }
+    };
+    $('#skip').onclick = () => { m++; tries = 0; m < MISSIONS.length ? render() : end(); };
+  }
+  function end() {
+    saveBest('preis', solved);
+    app.innerHTML = head(g, 'Auswertung') + `<div class="panel"><div class="result"><span class="kicker">Ergebnis</span><div class="big-num">${solved}/${MISSIONS.length}</div><p class="sub">Merke: Höchstpreis unten → Nachfrageüberhang. Mindestpreis oben → Angebotsüberhang.</p><div class="row" style="justify-content:center"><button class="btn primary" id="again">Nochmal</button><button class="btn" onclick="location.hash=''">Zur Arena</button></div></div></div>`;
+    $('#again').onclick = () => gamePrice(g);
+  }
+  render();
+}
+
+/* ───────────── 5 · Begriffe-Memory ───────────── */
+function gameMemory(g) {
+  const pairs = shuffle(MEMORY).slice(0, 8);
+  const cards = shuffle(pairs.flatMap((p, i) => [{ id: i, txt: p[0], term: true }, { id: i, txt: p[1], term: false }]));
+  let open = [], moves = 0, found = 0, lock = false;
+  app.innerHTML = head(g, 'Decke zwei Karten auf: Fachbegriff und passende Bedeutung bilden ein Paar. Schaffst du es in unter 14 Zügen?') + `
+    <div class="panel"><div class="hud"><span class="pill">Züge <b id="mv">0</b></span><span class="pill">Paare <b id="fd">0</b>/8</span></div>
+    <div class="mem" id="mem">${cards.map((c, k) => `<button class="mcard" data-k="${k}" aria-label="Karte ${k + 1}"><div class="in"><div class="f">${svgIcon('brain')}</div><div class="b ${c.term ? 'term' : ''}">${c.txt}</div></div></button>`).join('')}</div><div id="fb"></div></div>`;
+  $('#mem').onclick = (e) => {
+    const b = e.target.closest('.mcard'); if (!b || lock || b.classList.contains('open') || b.classList.contains('done')) return;
+    b.classList.add('open'); open.push(b);
+    if (open.length === 2) {
+      moves++; $('#mv').textContent = moves; lock = true;
+      const [x, y] = open.map(o => cards[+o.dataset.k]);
+      if (x.id === y.id && x.term !== y.term) {
+        setTimeout(() => { open.forEach(o => { o.classList.remove('open'); o.classList.add('done'); }); open = []; lock = false; found++; $('#fd').textContent = found; addXP(8); if (found === 8) end(); }, 450);
+      } else setTimeout(() => { open.forEach(o => o.classList.remove('open')); open = []; lock = false; }, 1000);
+    }
+  };
+  function end() {
+    saveBest('memory', 1); confetti();
+    const r = moves <= 12 ? 'Gedächtnis wie ein Elefant 🐘' : moves <= 16 ? 'Sehr gut!' : 'Geschafft! Nochmal für weniger Züge?';
+    $('#fb').innerHTML = `<div class="feedback ok"><b>Alle Paare gefunden in ${moves} Zügen</b><span>${r}</span></div><div class="row" style="margin-top:12px"><button class="btn primary" id="again">Neue Karten</button><button class="btn" onclick="location.hash=''">Zur Arena</button></div>`;
+    $('#again').onclick = () => gameMemory(g);
+  }
+}
+
+route();
+</script>
