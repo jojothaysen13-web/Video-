@@ -87,6 +87,7 @@ h2 { margin: 0; font-size: clamp(28px, 5vw, 44px); letter-spacing: -.05em; line-
 .pad { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 12px; }
 .padbtn { padding: 16px 8px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: 18px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; }
 .padbtn:active { background: color-mix(in srgb, var(--acc) 20%, var(--surface-2)); border-color: var(--acc); }
+.btn.sound { justify-self: start; padding: 9px 14px; font-size: 14px; border-radius: 12px; }
 .tip { color: var(--dim); font-size: 13px; margin-top: 10px; }
 canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 @media (hover: hover) and (pointer: fine) { .pad.touch-only { display: none; } }
@@ -215,6 +216,89 @@ function confTick() {
   confRaf = confParts.length ? requestAnimationFrame(confTick) : (cx0.clearRect(0, 0, innerWidth, innerHeight), 0);
 }
 
+/* ═════════════ Sound: eigene Runner-Musik + Effekte (Web Audio, live erzeugt) ═════════════ */
+const Sound = (() => {
+  let ac = null, master = null, music = null, sfx = null, noiseBuf = null, timer = 0, step = 0, nextT = 0, bpm = 110, playing = false, loops = 0;
+  let muted = store.get('muted', false);
+  const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+  function init() {
+    if (ac) return true;
+    const C = window.AudioContext || window.webkitAudioContext; if (!C) return false;
+    ac = new C();
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(ac.destination);
+    master = ac.createGain(); master.gain.value = muted ? 0 : .9; master.connect(comp);
+    music = ac.createGain(); music.gain.value = .5; music.connect(master);
+    sfx = ac.createGain(); sfx.gain.value = .55; sfx.connect(master);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden) ac.suspend(); else if (playing) ac.resume(); });
+    return true;
+  }
+  function tone(t, f, dur, type, vol, dest, f2) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .02);
+  }
+  function noise(t, dur, vol, freq, type, dest) {
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = noiseBuf;
+    f.type = type || 'highpass'; f.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(dest); src.start(t, Math.random() * .5); src.stop(t + dur + .02);
+  }
+  // Instrumente
+  const kick = t => tone(t, 160, .28, 'sine', .95, music, 42);
+  const clap = t => { noise(t, .16, .45, 1500, 'bandpass', music); noise(t + .012, .12, .3, 1800, 'bandpass', music); tone(t, 200, .07, 'triangle', .18, music); };
+  const hat = (t, open) => noise(t, open ? .14 : .035, open ? .16 : .12, 7500, 'highpass', music);
+  function bass(t, n, len) {
+    const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(); o.type = 'square'; o.frequency.value = mf(n);
+    f.type = 'lowpass'; f.frequency.setValueAtTime(1400, t); f.frequency.exponentialRampToValueAtTime(260, t + len); f.Q.value = 6;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.32, t + .008); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(f); f.connect(g); g.connect(music); o.start(t); o.stop(t + len + .02);
+  }
+  function steel(t, n, len) { // helle, steeldrum-artige Lead-Stimme
+    const f = mf(n), d = Math.min(.55, Math.max(.22, len));
+    tone(t, f, d, 'sine', .26, music); tone(t, f * 2.01, d * .7, 'sine', .12, music); tone(t, f * 3.97, d * .35, 'triangle', .04, music);
+  }
+  const pluck = (t, n) => tone(t, mf(n), .16, 'triangle', .07, music);
+  // Eigene Komposition: 4 Akkorde (Am – F – C – G), 8 Takte Melodie, 16 Schritte pro Takt
+  const ROOT = [45, 41, 48, 43];
+  const CHORD = [[69, 72, 76], [65, 69, 72], [67, 72, 76], [67, 71, 74]];
+  const BASS = [[0, 0, 2], [3, 0, 1], [6, 12, 2], [8, 0, 2], [10, 7, 2], [13, 12, 1], [14, 10, 2]];
+  const MEL = [
+    [[0, 76, 2], [2, 79, 2], [4, 81, 3], [8, 79, 1], [10, 76, 2], [12, 74, 2], [14, 72, 2]],
+    [[0, 72, 2], [3, 74, 1], [4, 76, 4], [10, 77, 2], [12, 76, 2], [14, 74, 2]],
+    [[0, 79, 3], [4, 76, 2], [6, 79, 2], [8, 84, 4], [12, 83, 2], [14, 81, 2]],
+    [[0, 79, 6], [8, 74, 2], [10, 76, 2], [12, 79, 4]],
+    [[0, 81, 2], [2, 81, 1], [4, 84, 2], [6, 81, 2], [8, 79, 2], [10, 76, 2], [12, 79, 4]],
+    [[0, 77, 2], [2, 76, 2], [4, 74, 2], [6, 72, 2], [8, 74, 6], [14, 76, 2]],
+    [[0, 76, 2], [2, 79, 2], [4, 84, 2], [6, 79, 2], [8, 76, 2], [10, 79, 2], [12, 83, 4]],
+    [[0, 81, 4], [4, 79, 2], [6, 74, 2], [8, 76, 8]],
+  ];
+  function playStep(st, t) {
+    const s16 = 60 / bpm / 4, bar = Math.floor(st / 16) % 8, i = st % 16, ch = bar % 4, intro = loops === 0 && bar < 2;
+    if ([0, 7, 8, 11].includes(i) && !(intro && i !== 0)) kick(t);
+    if ((i === 4 || i === 12) && !intro) clap(t);
+    if (i % 2 === 0) hat(t, i === 14); else if (!intro && (i === 5 || i === 13)) hat(t, false);
+    for (const [s, off, l] of BASS) if (s === i) bass(t, ROOT[ch] + off, l * s16 * .95);
+    if (!intro) for (const [s, n, l] of MEL[bar]) if (s === i) steel(t, n, l * s16);
+    if (loops > 0 && i % 2 === 1) pluck(t, CHORD[ch][(i >> 1) % 3] + 12);
+    if (bar === 7 && i >= 12 && loops >= 0) noise(t, .05, .05 + (i - 12) * .03, 3000, 'bandpass', music);
+  }
+  function sched() { while (nextT < ac.currentTime + .14) { playStep(step, nextT); nextT += 60 / bpm / 4; step++; if (step % 128 === 0) loops++; } }
+  return {
+    get muted() { return muted; },
+    start() { if (!init()) return; ac.resume(); music.gain.cancelScheduledValues(ac.currentTime); music.gain.setValueAtTime(.5, ac.currentTime); if (playing) return; playing = true; step = 0; loops = 0; bpm = 110; nextT = ac.currentTime + .08; timer = setInterval(sched, 25); },
+    stop(fade = .5) { if (!ac || !playing) return; playing = false; clearInterval(timer); music.gain.setTargetAtTime(0, ac.currentTime, fade / 4); },
+    tempo(speed) { bpm = Math.min(132, 110 + (speed - 12.5) * 1.5); },
+    setMuted(m) { muted = m; store.set('muted', m); if (ac) master.gain.setTargetAtTime(m ? 0 : .9, ac.currentTime, .03); },
+    coin() { if (!ac) return; const t = ac.currentTime; tone(t, 1318, .07, 'square', .07, sfx); tone(t + .055, 1976, .12, 'square', .07, sfx); },
+    jump() { if (!ac) return; tone(ac.currentTime, 280, .18, 'triangle', .22, sfx, 720); },
+    good() { if (!ac) return; const t = ac.currentTime; [72, 76, 79, 84].forEach((n, k) => steel(t + k * .06, n + 12, .3)); },
+    bad() { if (!ac) return; const t = ac.currentTime; tone(t, 220, .35, 'sawtooth', .16, sfx, 80); noise(t, .2, .25, 600, 'lowpass', sfx); },
+    hit() { if (!ac) return; const t = ac.currentTime; noise(t, .25, .5, 900, 'lowpass', sfx); tone(t, 120, .25, 'sine', .4, sfx, 50); },
+    over() { if (!ac) return; const t = ac.currentTime + .1; [76, 74, 72, 69].forEach((n, k) => steel(t + k * .16, n, .4)); },
+  };
+})();
+
 /* ═════════════ Router & Gerüst ═════════════ */
 const GAMES = [
   { id: 'run', name: 'Markt-Run', c: '--quiz', desc: 'Endlos-Runner auf drei Spuren: Lauf durch das Tor mit der richtigen Antwort, spring über Hürden, sammle €-Münzen.', topics: 'Alle Themen' },
@@ -334,7 +418,7 @@ function gameRun(g) {
   }
   function burst(x, y, col, n = 18) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-160, 160), vy: rnd(-260, -40), life: rnd(.4, .8), col }); }
   function lane(dir) { if (S && S.run) S.lane = Math.max(-1, Math.min(1, S.lane + dir)); }
-  function jump() { if (S && S.run && S.jump < 0) S.jump = 0; }
+  function jump() { if (S && S.run && S.jump < 0) { S.jump = 0; Sound.jump(); } }
   st.onPad = (k, down) => { if (!down) return; if (k === 'L') lane(-1); if (k === 'R') lane(1); if (k === 'J') jump(); };
   listen(window, 'keydown', e => {
     if (!S?.run) return;
@@ -352,12 +436,12 @@ function gameRun(g) {
     const chosen = parts.find(p => p.lane === pl); const right = parts.find(p => p.ok);
     G.res = chosen.ok ? 'ok' : 'bad'; G.chosenLane = pl;
     const W = st.dim.w, H = st.dim.h;
-    if (chosen.ok) { S.correct++; S.score += 100 + 25 * Math.min(S.combo, 6); S.combo++; addXP(10); burst(W / 2 + S.lx * laneW(), H * .7, COL.mint, 26); S.flash = .6; S.flashCol = COL.mint; S.fb = { ok: true, txt: `Richtig! ${right.label}`, t: 1.4 }; if (S.combo % 5 === 0) confetti(60); }
-    else { S.combo = 0; S.hearts--; S.shake = 1; S.flash = 1; S.flashCol = COL.bad; S.missed.push({ q: G.q.q, a: right.label }); S.fb = { ok: false, txt: `Falsch. Richtig: ${right.label}`, t: 1.8 }; }
+    if (chosen.ok) { Sound.good(); S.correct++; S.score += 100 + 25 * Math.min(S.combo, 6); S.combo++; addXP(10); burst(W / 2 + S.lx * laneW(), H * .7, COL.mint, 26); S.flash = .6; S.flashCol = COL.mint; S.fb = { ok: true, txt: `Richtig! ${right.label}`, t: 1.4 }; if (S.combo % 5 === 0) confetti(60); }
+    else { Sound.bad(); S.combo = 0; S.hearts--; S.shake = 1; S.flash = 1; S.flashCol = COL.bad; S.missed.push({ q: G.q.q, a: right.label }); S.fb = { ok: false, txt: `Falsch. Richtig: ${right.label}`, t: 1.8 }; }
   }
   const laneW = () => Math.min(st.dim.w * .25, 170);
   function update(dt) {
-    S.t += dt; S.speed = Math.min(27, 12.5 + S.t * .11); S.dist += S.speed * dt;
+    S.t += dt; S.speed = Math.min(27, 12.5 + S.t * .11); S.dist += S.speed * dt; Sound.tempo(S.speed);
     S.lx += (S.lane - S.lx) * Math.min(1, dt * 14);
     if (S.jump >= 0) { S.jump += dt; if (S.jump > JD) S.jump = -1; }
     S.inv = Math.max(0, S.inv - dt); S.shake = Math.max(0, S.shake - dt * 2.5); S.flash = Math.max(0, S.flash - dt * 2.2);
@@ -369,8 +453,8 @@ function gameRun(g) {
       if (e.type === 'gate') { resolveGate(e.gid); continue; }
       e.done = true;
       if (e.lane !== pl) continue;
-      if (e.type === 'coin') { S.coins++; S.score += 5; e.got = true; }
-      if (e.type === 'bar' && jh < .45 && S.inv <= 0) { S.hearts--; S.inv = 1.2; S.shake = .8; S.flash = .8; S.flashCol = COL.bad; S.combo = 0; }
+      if (e.type === 'coin') { S.coins++; S.score += 5; e.got = true; Sound.coin(); }
+      if (e.type === 'bar' && jh < .45 && S.inv <= 0) { Sound.hit(); S.hearts--; S.inv = 1.2; S.shake = .8; S.flash = .8; S.flashCol = COL.bad; S.combo = 0; }
     }
     S.ents = S.ents.filter(e => e.z - S.dist > -2.2 && !(e.got));
     S.parts.forEach(p => { p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }); S.parts = S.parts.filter(p => p.life > 0);
@@ -447,14 +531,21 @@ function gameRun(g) {
     st.setHud([['hearts', hearts(S.hearts)], ['', `€ ${S.coins}`], ['', `Richtig ${S.correct}`], ['', S.combo >= 2 ? `🔥 ${S.combo}er-Serie` : `Punkte ${S.score}`]]);
   }
   function gameOver() {
+    Sound.stop(.3); Sound.over();
     S.run = false; S.over = true; st.banner.hidden = true;
     const rec = saveBest('run', S.score); addXP(S.coins);
     if (S.correct >= 10) confetti();
     st.showOv(endCard('Markt-Run', S.score, rec, `${S.correct} Tore richtig · ${S.coins} Münzen · ${Math.round(S.dist)} m gelaufen`, S.missed));
   }
-  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); } });
+  st.ov.addEventListener('click', e => { if (e.target.closest('[data-start]')) { reset(); st.hideOv(); Sound.start(); } });
+  onDispose(() => Sound.stop(.2));
+  const vh = app.querySelector('.view-head');
+  vh.insertAdjacentHTML('beforeend', `<button class="btn sound" id="snd" aria-pressed="${!Sound.muted}"></button>`);
+  const snd = $('#snd'); const paintSnd = () => { snd.textContent = Sound.muted ? '🔇 Musik aus' : '🔊 Musik an'; snd.setAttribute('aria-pressed', String(!Sound.muted)); };
+  paintSnd(); snd.onclick = () => { Sound.setMuted(!Sound.muted); paintSnd(); };
+  listen(window, 'keydown', e => { if (e.key === 'm' || e.key === 'M') { Sound.setMuted(!Sound.muted); paintSnd(); } });
   reset(); S.run = false;
-  st.showOv(startCard('Markt-Run', 'Drei Spuren, drei Antworten. Lauf durch das richtige Tor. Falsches Tor oder Hürde kostet ein Herz. Je länger du läufst, desto schneller wird es.', ['◀ ▶ / A D: Spur', '▲ / W / Leertaste: Sprung', 'Handy: wischen oder tippen']));
+  st.showOv(startCard('Markt-Run', 'Drei Spuren, drei Antworten. Lauf durch das richtige Tor. Falsches Tor oder Hürde kostet ein Herz. Je länger du läufst, desto schneller wird es.', ['◀ ▶ / A D: Spur', '▲ / W / Leertaste: Sprung', 'Handy: wischen oder tippen', 'M: Musik an/aus']));
   loop((dt) => { if (S.run) update(dt); draw(); if (S.run) banner(); });
 }
 
